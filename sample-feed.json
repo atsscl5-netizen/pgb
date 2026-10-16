@@ -1,0 +1,175 @@
+{
+  "per_page": 250,
+  "products": [
+    {
+      "handle": "thank-you-card",
+      "title": "Thank you card",
+      "type": "candybox_generated",
+      "tags": [],
+      "price": 0.0,
+      "compare_at": null,
+      "available": true,
+      "variant_id": 12345,
+      "image": "//cdn.shopify.com/x.jpg",
+      "url": "https://parulgargbeauty.com/products/thank-you-card",
+      "shade": "",
+      "desc": ""
+    },
+    {
+      "handle": "signature-sindoor-pack-liquid-amp-powder-kumkum",
+      "title": "Signature Sindoor Pack: Liquid &amp; Powder (KumKum)",
+      "type": "Sindoor",
+      "tags": [
+        "Bestsellers",
+        "bridal",
+        "festive",
+        "Indian-beauty",
+        "Kumkum",
+        "Sindoor",
+        "traditional"
+      ],
+      "price": 395.0,
+      "compare_at": null,
+      "available": true,
+      "variant_id": 12345,
+      "image": "//cdn.shopify.com/x.jpg",
+      "url": "https://parulgargbeauty.com/products/signature-sindoor-pack-liquid-amp-powder-kumkum",
+      "shade": "",
+      "desc": "Signature Sindoor Pack – Liquid & Powder Sindoor (Kumkum) With the divine blessings of Goddess Kali from Kalighat Temple"
+    },
+    {
+      "handle": "creamy-matte-lip-crayon-show-stopper",
+      "title": "Show Stopper 12: Creamy Matte Lip Crayon",
+      "type": "Lipsticks",
+      "tags": [
+        "795",
+        "Bestsellers",
+        "Day & Night Matte Lip Crayon",
+        "exclude-combo",
+        "Lip crayon",
+        "Lips",
+        "Parul Garg's Day & Night Matte Lip Crayon"
+      ],
+      "price": 495.0,
+      "compare_at": null,
+      "available": true,
+      "variant_id": 12345,
+      "image": "//cdn.shopify.com/x.jpg",
+      "url": "https://parulgargbeauty.com/products/creamy-matte-lip-crayon-show-stopper",
+      "shade": "Classic Ruby Red",
+      "desc": "Parul Garg, renowned for her expertise in Indian beauty, presents the Day & Night Creamy Matte Lip Crayons. Enriched wit"
+    },
+    {
+      "handle": "creamy-matte-lip-crayon-boss-babe",
+      "title": "Boss Babe 45: Creamy Matte Lip Crayon",
+      "type": "Lipsticks",
+      "tags": [
+        "795",
+        "Bestsellers",
+        "Day & Night Matte Lip Crayon",
+        "exclude-combo",
+        "Lip crayon",
+        "Lips",
+        "Parul Garg's Day & Night Matte Lip Crayon"
+      ],
+      "price": 495.0,
+      "compare_at": null,
+      "available": true,
+      "variant_id": 12345,
+      "image": "//cdn.shopify.com/x.jpg",
+      "url": "https://parulgargbeauty.com/products/creamy-matte-lip-crayon-boss-babe",
+      "shade": "Bright Fuchsia Pink",
+      "desc": "Parul Garg, renowned for her expertise in Indian beauty, presents the Day & Night Creamy Matte Lip Crayons. Enriched wit"
+    },
+    {
+      "handle": "creamy-matte-lip-crayon-socialite",
+      "title": "Socialite 67: Creamy Matte Lip Crayon",
+      "type": "Lipsticks",
+      "tags": [
+        "795",
+        "Bestsellers",
+        "Day & Night Matte Lip Crayon",
+        "exclude-combo",
+        "Lip crayon",
+        "Lips",
+        "Parul Garg's Day & Night Matte Lip Crayon"
+      ],
+      "price": 495.0,
+      "compare_at": null,
+      "available": true,
+      "variant_id": 12345,
+      "image": "//cdn.shopify.com/x.jpg",
+      "url": "https://parulgargbeauty.com/products/creamy-matte-lip-crayon-socialite",
+      "shade": "Dark Berry Maroon",
+      "desc": "Parul Garg, renowned for her expertise in Indian beauty, presents the Day & Night Creamy Matte Lip Crayons. Enriched wit"
+    },
+    {
+      "handle": "creamy-matte-lip-crayon-rockstar",
+      "title": "Rockstar 78: Creamy Matte Lip Crayon",
+      "type": "Lipsticks",
+      "tags": [
+        "795",
+        "Bestsellers",
+        "Day & Night Matte Lip Crayon",
+        "exclude-combo",
+        "Lip crayon",
+        "Lips",
+        "Parul Garg's Day & Night Matte Lip Crayon"
+      ],
+      "price": 495.0,
+      "compare_at": null,
+      "available": true,
+      "variant_id": 12345,
+      "image": "//cdn.shopify.com/x.jpg",
+      "url": "https://parulgargbeauty.com/products/creamy-matte-lip-crayon-rockstar",
+      "shade": "Deep Cocoa Brown",
+      "desc": "Parul Garg, renowned for her expertise in Indian beauty, presents the Day & Night Creamy Matte Lip Crayons. Enriched wit"
+    },
+    {
+      "handle": "creamy-matte-lip-crayon-trendsetter",
+      "title": "Trendsetter 11: Creamy Matte Lip Crayon",
+      "type": "Lipsticks",
+      "tags": [
+        "795",
+        "Bestsellers",
+        "Day & Night Matte Lip Crayon",
+        "exclude-combo",
+        "Lip crayon",
+        "Lips",
+        "Parul Garg's Day & Night Matte Lip Crayon"
+      ],
+      "price": 495.0,
+      "compare_at": null,
+      "available": true,
+      "variant_id": 12345,
+      "image": "//cdn.shopify.com/x.jpg",
+      "url": "https://parulgargbeauty.com/products/creamy-matte-lip-crayon-trendsetter",
+      "shade": "Bestselling Berry Shade",
+      "desc": "Parul Garg, renowned for her expertise in Indian beauty, presents the Day & Night Creamy Matte Lip Crayons. Enriched wit"
+    },
+    {
+      "handle": "daily-must-haves-pack-of-five-creamy-matte-lip-crayons",
+      "title": "Daily Must-Haves: Pack-of-Five Creamy Matte Lip Crayons",
+      "type": "Lipstick",
+      "tags": [
+        "all",
+        "candybox_generated",
+        "exclude-combo",
+        "exclude_1294",
+        "Gifts & Sets",
+        "Lip crayon",
+        "Lips",
+        "Pack of 5 crayon",
+        "Sale"
+      ],
+      "price": 1199.0,
+      "compare_at": null,
+      "available": true,
+      "variant_id": 12345,
+      "image": "//cdn.shopify.com/x.jpg",
+      "url": "https://parulgargbeauty.com/products/daily-must-haves-pack-of-five-creamy-matte-lip-crayons",
+      "shade": "",
+      "desc": "Daily Must-Haves: Pack of Five Creamy Matte Lip Crayons Introducing Daily Must-Haves, a versatile collection of five cre"
+    }
+  ]
+}
