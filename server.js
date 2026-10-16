@@ -39,21 +39,57 @@ async function fetchFeedPage(page) {
   try {
     return JSON.parse(text);
   } catch {
-    throw new Error(`Feed is not JSON (is the template uploaded?) — starts with: ${text.slice(0, 80)}`);
+    throw new Error(`Feed is not JSON (template not on this theme?) — starts with: ${text.slice(0, 60).replace(/\s+/g, " ")}`);
   }
 }
 
+// Fallback when the advisor-feed template isn't on the live theme yet: Shopify's public /products.json.
+// It has no metafields, so "shade" stays empty (shade names in titles still work).
+async function loadFromProductsJson() {
+  const out = [];
+  for (let page = 1; page <= 10; page++) {
+    const res = await fetch(`${STORE_URL}/products.json?limit=250&page=${page}`, { headers: { "user-agent": "pgb-advisor/1.0" } });
+    if (!res.ok) throw new Error(`products.json HTTP ${res.status}`);
+    const list = (await res.json()).products || [];
+    for (const p of list) {
+      const v = (p.variants || []).find((x) => x.available) || (p.variants || [])[0];
+      if (!v) continue;
+      const tags = Array.isArray(p.tags) ? p.tags : String(p.tags || "").split(",").map((t) => t.trim()).filter(Boolean);
+      const desc = String(p.body_html || "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim()
+        .split(" ").slice(0, 30).join(" ");
+      out.push({
+        handle: p.handle, title: p.title, type: p.product_type || "", tags,
+        price: Number(v.price), compare_at: v.compare_at_price && Number(v.compare_at_price) > Number(v.price) ? Number(v.compare_at_price) : null,
+        available: (p.variants || []).some((x) => x.available), variant_id: v.id,
+        image: p.images && p.images[0] ? p.images[0].src : null,
+        url: `${STORE_URL}/products/${p.handle}`, shade: "", desc,
+      });
+    }
+    if (list.length < 250) break;
+  }
+  return out;
+}
+
+let catalogSource = "";
 async function loadCatalog() {
   let items = [];
   if (MOCK_FEED_FILE) {
     const fs = await import("node:fs/promises");
     items = JSON.parse(await fs.readFile(MOCK_FEED_FILE, "utf8")).products;
+    catalogSource = "mock";
   } else {
-    for (let page = 1; page <= 10; page++) {
-      const data = await fetchFeedPage(page);
-      const list = Array.isArray(data.products) ? data.products : [];
-      items.push(...list);
-      if (list.length < (data.per_page || 250)) break;
+    try {
+      for (let page = 1; page <= 10; page++) {
+        const data = await fetchFeedPage(page);
+        const list = Array.isArray(data.products) ? data.products : [];
+        items.push(...list);
+        if (list.length < (data.per_page || 250)) break;
+      }
+      catalogSource = "advisor-feed";
+    } catch (e) {
+      console.warn("[catalog] advisor-feed unavailable, using /products.json:", e.message.slice(0, 120));
+      items = await loadFromProductsJson();
+      catalogSource = "products.json";
     }
   }
   // Keep only real, sellable products (drops free gifts / thank-you cards etc.)
@@ -201,7 +237,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === "OPTIONS") return send(res, 204, null, origin);
   if (req.method === "GET" && path === "/health") {
-    return send(res, 200, { ok: true, products: catalog.length, model: MODEL, mock: MOCK,
+    return send(res, 200, { ok: true, products: catalog.length, source: catalogSource, model: MODEL, mock: MOCK,
       catalog_age_min: catalogLoadedAt ? Math.round((Date.now() - catalogLoadedAt) / 60000) : null }, origin);
   }
   if (req.method !== "POST" || path !== "/chat") return send(res, 404, { error: "Not found" }, origin);
