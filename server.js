@@ -1,4 +1,4 @@
-// PGB Beauty Advisor — tiny backend (Node 18+, zero dependencies)
+// PGB Beauty Advisor — backend (Node 18+; only dependency: "pg" for chat tracking)
 // What it does:
 //   1. Every 30 min, reads your live product list from parulgargbeauty.com
 //      (via the theme template "collection.advisor-feed.liquid").
@@ -8,6 +8,9 @@
 // Your Claude API key lives only here (as an environment variable), never in the theme.
 
 import http from "node:http";
+import crypto from "node:crypto";
+import { initTracking, logChat, logEvent, dashboardData, questionsForSummary, exportCsv, trackingEnabled } from "./tracking.js";
+import { dashboardHtml } from "./dashboard.js";
 
 // ---------- Settings (set these as environment variables on Render) ----------
 const PORT = Number(process.env.PORT || 3000);
@@ -22,6 +25,7 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ||
   "https://parulgargbeauty.com,https://www.parulgargbeauty.com")
   .split(",").map((s) => s.trim()).filter(Boolean);
 const ASSISTANT_NAME = process.env.ASSISTANT_NAME || "Pari";
+const DASHBOARD_KEY = process.env.DASHBOARD_KEY || "";
 const MOCK = process.env.MOCK === "1"; // local testing without an API key
 const MOCK_FEED_FILE = process.env.MOCK_FEED_FILE || "";
 
@@ -72,6 +76,9 @@ async function loadFromProductsJson() {
 }
 
 let catalogSource = "";
+function decodeEntities(s) {
+  return String(s || "").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;|&#x27;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+}
 async function loadCatalog() {
   let items = [];
   if (MOCK_FEED_FILE) {
@@ -95,7 +102,8 @@ async function loadCatalog() {
   }
   // Keep only real, sellable products (drops free gifts / thank-you cards etc.)
   const clean = items.filter((p) => p && p.handle && p.available && Number(p.price) > 0)
-    .map((p) => ({ ...p, image: p.image && p.image.startsWith("//") ? `https:${p.image}` : p.image }));
+    .map((p) => ({ ...p, title: decodeEntities(p.title), shade: decodeEntities(p.shade),
+      image: p.image && p.image.startsWith("//") ? `https:${p.image}` : p.image }));
   catalog = clean;
   byHandle = new Map(clean.map((p) => [p.handle, p]));
   catalogText = clean.map((p) => {
@@ -261,6 +269,21 @@ const server = http.createServer(async (req, res) => {
     return send(res, 200, { ok: true, products: catalog.length, source: catalogSource, model: MODEL, mock: MOCK,
       catalog_age_min: catalogLoadedAt ? Math.round((Date.now() - catalogLoadedAt) / 60000) : null }, origin);
   }
+  // ---- Insights dashboard (private: needs ?key=DASHBOARD_KEY) ----
+  if (path.startsWith("/dashboard")) return handleDashboard(req, res, path);
+
+  // ---- Tracking beacons from the widget (chat opened, added to cart) ----
+  if (req.method === "POST" && path === "/event") {
+    if (origin && !ALLOWED_ORIGINS.includes(origin)) return send(res, 403, { error: "Origin not allowed" }, origin);
+    let body = "";
+    for await (const chunk of req) { body += chunk; if (body.length > 4000) break; }
+    try {
+      const ev = JSON.parse(body);
+      logEvent({ sid: ev.sid, type: ev.type, data: ev.data, page: ev.page, cart: ev.cart, ua: req.headers["user-agent"] });
+    } catch {}
+    return send(res, 204, null, origin);
+  }
+
   if (req.method !== "POST" || path !== "/chat") return send(res, 404, { error: "Not found" }, origin);
   if (origin && !ALLOWED_ORIGINS.includes(origin)) return send(res, 403, { error: "Origin not allowed" }, origin);
 
@@ -287,20 +310,83 @@ const server = http.createServer(async (req, res) => {
       .slice(0, 4)
       .map(({ handle, title, price, compare_at, variant_id, image, url, shade }) =>
         ({ handle, title, price, compare_at, variant_id, image, url, shade }));
+    const reply = String(out.reply || "").slice(0, 800);
     send(res, 200, {
-      reply: String(out.reply || "").slice(0, 800),
+      reply,
       products,
       suggestions: (out.suggestions || []).slice(0, 3).map((s) => String(s).slice(0, 40)),
     }, origin);
+    // Save the question + answer for the dashboard (after replying, so it never slows the chat down).
+    logChat({ sid: payload.sid, page: payload.page, cart: payload.cart, ua: req.headers["user-agent"],
+      userText: messages[messages.length - 1].content, reply, products, budget });
   } catch (e) {
     console.error("[chat] error:", e.message);
     send(res, 502, { error: "The advisor is busy right now. Please try again in a moment." }, origin);
   }
 });
 
+// ---------- Dashboard ----------
+function keyOk(req) {
+  if (!DASHBOARD_KEY) return false;
+  const k = new URL(req.url, "http://x").searchParams.get("key") || "";
+  const a = Buffer.from(k), b = Buffer.from(DASHBOARD_KEY);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+const summaryCache = new Map(); // "days|YYYY-MM-DD-HH" -> text
+async function handleDashboard(req, res, path) {
+  const json = (status, obj) => { res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }); res.end(JSON.stringify(obj)); };
+  if (!DASHBOARD_KEY) return json(503, { error: "Set DASHBOARD_KEY on Render to use the dashboard." });
+  if (!keyOk(req)) return json(401, { error: "Wrong or missing key." });
+  const days = Number(new URL(req.url, "http://x").searchParams.get("days")) || 7;
+  try {
+    if (req.method === "GET" && (path === "/dashboard" || path === "/dashboard/")) {
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex" });
+      return res.end(dashboardHtml(ASSISTANT_NAME));
+    }
+    if (req.method === "GET" && path === "/dashboard/data") return json(200, await dashboardData(days));
+    if (req.method === "GET" && path === "/dashboard/export.csv") {
+      res.writeHead(200, { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="pari-chats-${days}d.csv"` });
+      return res.end(await exportCsv(days));
+    }
+    if (req.method === "POST" && path === "/dashboard/summary") {
+      if (!trackingEnabled()) return json(200, { error: "Tracking is off." });
+      const cacheKey = `${days}|${new Date().toISOString().slice(0, 13)}`; // re-summarise at most once an hour
+      if (summaryCache.has(cacheKey)) return json(200, { summary: summaryCache.get(cacheKey) });
+      const qs = await questionsForSummary(days);
+      if (!qs.length) return json(200, { summary: "No questions in this period yet." });
+      const summary = MOCK ? `(Test mode) ${qs.length} questions.` : await summariseQuestions(qs, days);
+      summaryCache.set(cacheKey, summary);
+      return json(200, { summary });
+    }
+    return json(404, { error: "Not found" });
+  } catch (e) {
+    console.error("[dashboard]", e.message);
+    return json(500, { error: "Dashboard error: " + e.message.slice(0, 160) });
+  }
+}
+
+async function summariseQuestions(questions, days) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-api-key": API_KEY, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({
+      model: MODEL, max_tokens: 900,
+      system: "You analyse shopper questions asked to an AI beauty assistant on an Indian makeup store (PARIÉ by Parul Garg Beauty). Write for the store's growth team in plain, simple English. Only use what the questions show; give approximate counts; never invent numbers or quotes.",
+      messages: [{ role: "user", content:
+        `Here are ${questions.length} questions shoppers typed in the last ${days} day(s), newest first:\n\n` +
+        questions.map((q, i) => `${i + 1}. ${q}`).join("\n") +
+        `\n\nWrite a short summary with these headings:\nTOP THEMES (5 max, with rough counts)\nPRODUCTS/SHADES PEOPLE WANT (incl. anything we may not sell)\nCOMMON PROBLEMS OR CONFUSION\nLANGUAGE (English / Hindi / Hinglish mix)\n3 ACTIONS FOR THE TEAM\nKeep it under 250 words. Plain text, no markdown symbols.` }],
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(`Claude API ${res.status}`);
+  return (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n").trim();
+}
+
 server.listen(PORT, () => {
   console.log(`PGB Advisor backend on :${PORT} (model ${MODEL}${MOCK ? ", MOCK mode" : ""})`);
   if (!API_KEY && !MOCK) console.warn("WARNING: ANTHROPIC_API_KEY is not set");
   ensureCatalog().catch((e) => console.error("[catalog] first load failed:", e.message));
+  initTracking().catch((e) => console.error("[track] init failed:", e.message));
   setInterval(() => ensureCatalog().catch(() => {}), REFRESH_MIN * 60 * 1000).unref();
 });
