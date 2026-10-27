@@ -147,7 +147,11 @@ Products:
 - Shade advice for Indian skin tones (fair / wheatish / dusky / deep) is fine as general makeup guidance, phrased as suggestions, not guarantees.
 - Only suggest shades/colours you can see in the product title, shade, description or details.
 - If the shopper gives a budget ("under ₹600"), every product you pick MUST be priced at or below it.
-- Recommend at most 4 products. Ask one short question when you need to know skin tone, occasion, finish or budget.
+- Recommend at most 4 products. SHOW PRODUCTS FIRST — don't reply with only a question. If you need to know shade, finish or budget, show your best picks anyway and ask one short question after.
+- Packs AND singles: when a shopper asks about a product type, shade family, look or occasion (e.g. "bold lipsticks", "nude shades", "kajal", "gift"), show BOTH kinds when the catalog has them: 1–2 packs/sets/combos AND 2–3 individual products. Only show just one kind if the shopper clearly asks for it ("only single", "a set"). In the reply, say briefly which are packs (better value) and which are single shades.
+- "N shades/items under ₹X": show packs of about N items priced ≤ X, plus single products that let them build their own set (each single priced ≤ X). Mention that Buy 3 @ ₹999 is an option when it fits.
+- If the shopper says "no", "not this" or "something else", show DIFFERENT products from the ones you just showed — never repeat the same ones. If they name a product or collection (e.g. "the love collection"), show that product first.
+- If the shopper is on a product page (VIEWING below), that product is likely what "this" or "it" means.
 - Festive season: for gifting, festive, puja, bridal, suhaag, sargi or Karva Chauth questions, include Karva Chauth / festive gift packs from the catalog and link /collections/karva-chauth-specials.
 
 Offers, coupons, shipping, policies:
@@ -196,7 +200,7 @@ const RESPOND_TOOL = {
   },
 };
 
-async function askClaude(messages, detailsText) {
+async function askClaude(messages, detailsText, contextText) {
   const system = [
     { type: "text", text: INSTRUCTIONS },
     { type: "text", text: `STORE KNOWLEDGE:\n${KNOWLEDGE || "(none)"}` },
@@ -206,6 +210,7 @@ async function askClaude(messages, detailsText) {
   ];
   // Full details (size, FAQs, specs) only for the products this question is about — keeps every chat cheap.
   if (detailsText) system.push({ type: "text", text: `PRODUCT DETAILS (for the products this shopper is asking about):\n${detailsText}` });
+  if (contextText) system.push({ type: "text", text: contextText });
   const body = {
     model: MODEL,
     max_tokens: 700,
@@ -283,17 +288,29 @@ function cleanLinks(links) {
   return out;
 }
 
+// Tells Claude which product page the shopper is on and their budget, so "this one" and "under 600" are understood.
+function shopperContext(messages, page) {
+  const lines = [];
+  const m = String(page || "").match(/\/products\/([\w-]+)/);
+  const p = m && byHandle.get(m[1]);
+  if (p) lines.push(`VIEWING: the shopper is on the product page of ${p.handle} | ${p.title} | ₹${p.price}`);
+  const budget = findBudget(messages);
+  if (budget) lines.push(`BUDGET: ₹${budget} per product — only pick products priced ₹${budget} or less (anything above is hidden from the shopper).`);
+  return lines.length ? "SHOPPER CONTEXT:\n" + lines.join("\n") : "";
+}
+
 // Finds the most recent budget the shopper mentioned, e.g. "under ₹600", "below 500", "1000 ke andar", "₹800 tak".
 function findBudget(messages) {
   const pats = [
-    /(?:under|below|less than|within|upto|up to|max(?:imum)?|budget(?: is| of)?)\s*(?:rs\.?|₹|inr)?\s*(\d[\d,]{1,6})/i,
-    /(?:rs\.?|₹|inr)?\s*(\d[\d,]{1,6})\s*(?:rs|rupees)?\s*(?:ke andar|ke under|tak|se kam|or less|max)/i,
+    /(?:under|below|less than|within|upto|up to|max(?:imum)?|budget(?: is| of)?)\s*(?:rs\.?|₹|inr)?\s*(\d[\d,]{1,6})(?:\s*(?:\/|-|to|or)\s*(?:rs\.?|₹)?\s*(\d[\d,]{1,6}))?/i,
+    /(?:rs\.?|₹|inr)?\s*(\d[\d,]{1,6})(?:\s*(?:\/|-|to|or)\s*(?:rs\.?|₹)?\s*(\d[\d,]{1,6}))?\s*(?:rs|rupees)?\s*(?:ke andar|ke under|tak|se kam|or less|max)/i,
   ];
   for (let i = messages.length - 1; i >= 0; i--) {
     if (messages[i].role !== "user") continue;
     for (const re of pats) {
       const m = messages[i].content.match(re);
-      if (m) { const n = Number(m[1].replace(/,/g, "")); if (n >= 50) return n; }
+      // "under 500/600" or "500-600" → use the higher number, so we don't hide products the shopper would accept.
+      if (m) { const n = Math.max(Number(m[1].replace(/,/g, "")), m[2] ? Number(m[2].replace(/,/g, "")) : 0); if (n >= 50) return n; }
     }
   }
   return 0;
@@ -373,7 +390,7 @@ const server = http.createServer(async (req, res) => {
 
   try {
     await ensureCatalog();
-    const out = MOCK ? mockAnswer(messages) : await askClaude(messages, pickDetails(messages, payload.page));
+    const out = MOCK ? mockAnswer(messages) : await askClaude(messages, pickDetails(messages, payload.page), shopperContext(messages, payload.page));
     // Only keep handles that really exist in the store — the AI can't invent products.
     // Safety net: if the shopper stated a budget, drop anything priced above it.
     const budget = findBudget(messages);
