@@ -66,6 +66,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;p
       <div class="card"><h2>Purchases from ${name}</h2><div id="purch"></div></div>
       <div class="card"><h2>Most added to cart from chat</h2><div class="rows" id="added"></div></div>
       <div class="card"><h2>Most recommended</h2><div class="rows" id="rec"></div></div>
+      <div class="card"><h2>Handed to WhatsApp team</h2><p class="sub">Questions Pari couldn't answer (orders, returns, payments...)</p><div id="wa"></div></div>
       <div class="card"><h2>Pages where chats start</h2><div class="rows" id="pages"></div></div>
     </div>
   </div>
@@ -87,7 +88,8 @@ function kpis(k){
   const t=[['Chat opened',k.opens,'times the bubble was opened'],['Chats',chats,(+k.mobile_chats||0)+' on mobile'],
     ['Questions asked',k.questions,chats?(k.questions/chats).toFixed(1)+' per chat':''],
     ['Add to cart from chat',k.add_to_carts,chats?Math.round(100*carts/chats)+'% of chats added something':''],
-    ['Cart value added',inr(k.cart_value),'value of items added from Pari']];
+    ['Cart value added',inr(k.cart_value),'value of items added from Pari'],
+    ['Sent to WhatsApp team',k.whatsapp||0,'questions Pari handed to your team']];
   $('kpis').innerHTML=t.map(x=>'<div class="kpi"><div class="l">'+x[0]+'</div><div class="v">'+x[1]+'</div><div class="s">'+x[2]+'</div></div>').join('');
 }
 function chart(daily){
@@ -121,6 +123,7 @@ async function load(){
   rows($('added'),d.added,'title','times',i=>i.times);
   rows($('rec'),d.recommended,'title','times');
   rows($('pages'),d.pages,'page','chats');
+  $('wa').innerHTML=(d.whatsapp&&d.whatsapp.length)?d.whatsapp.map(w=>'<div class="row" style="display:block;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line)">'+esc(w.q||'(no text)')+'<div style="font-size:11px;color:var(--muted)">'+new Date(w.at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+'</div></div>').join(''):'<div class="empty">None yet.</div>';
   $('summary').className='summary empty';$('summary').textContent='Click the button to create a summary.';
 }
 document.querySelectorAll('.range button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.range button').forEach(x=>x.classList.remove('on'));b.classList.add('on');DAYS=+b.dataset.d;load();});
