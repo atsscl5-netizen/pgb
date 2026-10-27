@@ -68,6 +68,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;p
       <div class="card"><h2>Most recommended</h2><div class="rows" id="rec"></div></div>
       <div class="card"><h2>Handed to WhatsApp team</h2><p class="sub">Questions Pari couldn't answer (orders, returns, payments...)</p><div id="wa"></div></div>
       <div class="card"><h2>Pages where chats start</h2><div class="rows" id="pages"></div></div>
+      <div class="card"><h2>Links tapped in chat</h2><p class="sub">Promo bar, shortcut buttons and links Pari shared (e.g. Karva Chauth Specials)</p><div class="rows" id="links"></div></div>
     </div>
   </div>
 </main>
@@ -89,7 +90,8 @@ function kpis(k){
     ['Questions asked',k.questions,chats?(k.questions/chats).toFixed(1)+' per chat':''],
     ['Add to cart from chat',k.add_to_carts,chats?Math.round(100*carts/chats)+'% of chats added something':''],
     ['Cart value added',inr(k.cart_value),'value of items added from Pari'],
-    ['Sent to WhatsApp team',k.whatsapp||0,'questions Pari handed to your team']];
+    ['Sent to WhatsApp team',k.whatsapp||0,'questions Pari handed to your team'],
+    ['Links tapped',k.link_clicks||0,'promo bar, shortcuts & collection links']];
   $('kpis').innerHTML=t.map(x=>'<div class="kpi"><div class="l">'+x[0]+'</div><div class="v">'+x[1]+'</div><div class="s">'+x[2]+'</div></div>').join('');
 }
 function chart(daily){
@@ -123,6 +125,7 @@ async function load(){
   rows($('added'),d.added,'title','times',i=>i.times);
   rows($('rec'),d.recommended,'title','times');
   rows($('pages'),d.pages,'page','chats');
+  rows($('links'),(d.links||[]).map(l=>({label:l.label+(l.where_from?' ('+l.where_from+')':''),times:l.times})),'label','times');
   $('wa').innerHTML=(d.whatsapp&&d.whatsapp.length)?d.whatsapp.map(w=>'<div class="row" style="display:block;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line)">'+esc(w.q||'(no text)')+'<div style="font-size:11px;color:var(--muted)">'+new Date(w.at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+'</div></div>').join(''):'<div class="empty">None yet.</div>';
   $('summary').className='summary empty';$('summary').textContent='Click the button to create a summary.';
 }

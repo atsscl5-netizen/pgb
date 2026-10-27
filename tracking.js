@@ -83,7 +83,7 @@ export async function logChat({ sid, page, ua, cart, userText, reply, products, 
 export async function logEvent({ sid, type, data, page, ua, cart }) {
   if (!ready) return;
   sid = cleanSid(sid); if (!sid) return;
-  if (!["open", "add_to_cart", "whatsapp"].includes(type)) return;
+  if (!["open", "add_to_cart", "whatsapp", "link_click"].includes(type)) return;
   try {
     await touchSession(sid, { page, ua, cart });
     const d = data && typeof data === "object" ? {
@@ -92,6 +92,9 @@ export async function logEvent({ sid, type, data, page, ua, cart }) {
       title: data.title ? String(data.title).slice(0, 160) : undefined,
       price: data.price != null ? Number(data.price) : undefined,
       q: data.q ? redact(String(data.q)).slice(0, 200) : undefined, // question that led to a WhatsApp hand-off
+      label: data.label ? String(data.label).slice(0, 80) : undefined, // promo bar / shortcut / link pill tapped
+      url: data.url ? String(data.url).slice(0, 200) : undefined,
+      where: data.where ? String(data.where).slice(0, 20) : undefined,
     } : null;
     await pool.query(`insert into pari.events (sid, type, data) values ($1,$2,$3)`, [sid, type, d ? JSON.stringify(d) : null]);
     if (type === "add_to_cart") await pool.query(`update pari.sessions set add_to_carts = add_to_carts + 1 where sid = $1`, [sid]);
@@ -113,7 +116,8 @@ export async function dashboardData(days) {
       (select count(distinct sid) from pari.events where type='add_to_cart' and at >= ${since}) as carting_chats,
       (select coalesce(sum((data->>'price')::numeric),0) from pari.events where type='add_to_cart' and at >= ${since}) as cart_value,
       (select count(*) from pari.sessions where messages > 0 and device='mobile' and started_at >= ${since}) as mobile_chats,
-      (select count(*) from pari.events where type='whatsapp' and at >= ${since}) as whatsapp`);
+      (select count(*) from pari.events where type='whatsapp' and at >= ${since}) as whatsapp,
+      (select count(*) from pari.events where type='link_click' and at >= ${since}) as link_clicks`);
 
   const daily = await q(`
     select to_char(d::date,'YYYY-MM-DD') as day,
@@ -136,6 +140,11 @@ export async function dashboardData(days) {
     select at, coalesce(data->>'q','') as q from pari.events
     where type='whatsapp' and at >= ${since} order by at desc limit 20`);
 
+  const links = await q(`
+    select coalesce(data->>'label', data->>'url', '?') as label, coalesce(data->>'where','') as where_from, count(*) as times
+    from pari.events where type='link_click' and at >= ${since}
+    group by 1,2 order by 3 desc limit 10`);
+
   const pages = await q(`
     select coalesce(first_page,'?') as page, count(*) as chats from pari.sessions
     where messages>0 and started_at >= ${since} group by 1 order by 2 desc limit 8`);
@@ -151,7 +160,7 @@ export async function dashboardData(days) {
   if (SHOPIFY_TOKEN) {
     try { purchases = await purchaseStats(days); } catch (e) { purchases = { error: e.message.slice(0, 200) }; }
   }
-  return { tracking: true, days: Number(days) || 7, kpi, daily, recommended, added, pages, whatsapp, convos, purchases, ordersEnabled: Boolean(SHOPIFY_TOKEN) };
+  return { tracking: true, days: Number(days) || 7, kpi, daily, recommended, added, pages, whatsapp, links, convos, purchases, ordersEnabled: Boolean(SHOPIFY_TOKEN) };
 }
 
 export async function questionsForSummary(days) {
