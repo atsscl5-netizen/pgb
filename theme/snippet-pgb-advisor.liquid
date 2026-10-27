@@ -1,0 +1,78 @@
+{%- comment -%}
+  PGB Beauty Advisor - chat launcher (round speech-bubble button + one-time "Hi" nudge).
+  Rendered by sections/pgb-advisor.liquid, which passes: api, name, promo_text, promo_url, quick_links, nudge_text.
+  Speed: adds only this small button (~2 KB inline, no network requests).
+  The chat code (pgb-advisor.js / .css) downloads ONLY when a shopper taps the button.
+{%- endcomment -%}
+{%- assign pgb_advisor_api = api | default: 'https://YOUR-RENDER-SERVICE.onrender.com' -%}
+{%- assign pgb_advisor_name = name | default: 'Pari' -%}
+
+<button id="pgb-adv-launch" type="button" aria-label="Chat with {{ pgb_advisor_name | escape }}, our AI beauty guide"
+  class="{% if request.page_type == 'product' %}is-pdp{% endif %}"
+  data-api="{{ pgb_advisor_api }}"
+  data-name="{{ pgb_advisor_name | escape }}"
+  data-css="{{ 'pgb-advisor.css' | asset_url }}"
+  data-js="{{ 'pgb-advisor.js' | asset_url }}"
+  data-promo-text="{{ promo_text | escape }}"
+  data-promo-url="{{ promo_url | escape }}"
+  data-links="{{ quick_links | escape }}">
+  <span class="pgbl-ask">Ask</span>
+  <span class="pgbl-name">{{ pgb_advisor_name | escape }}</span>
+  <svg class="pgbl-spark" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2l1.8 5.6L19.5 9l-5.7 1.6L12 16l-1.8-5.4L4.5 9l5.7-1.4z"/></svg>
+</button>
+<div id="pgb-adv-nudge" role="status" hidden>
+  <button type="button" class="pgbn-text">{{ nudge_text | default: "Hi, I'm Pari ✨ Need help finding your shade?" | escape }}</button>
+  <button type="button" class="pgbn-x" aria-label="Dismiss">&times;</button>
+</div>
+<style>
+  #pgb-adv-launch{position:fixed;right:20px;bottom:20px;z-index:2147483000;width:68px;height:68px;padding:0;
+    border:3px solid #fff;border-radius:50% 50% 8px 50%;background:#0c544e;
+    color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;cursor:pointer;
+    box-shadow:0 6px 20px rgba(12,84,78,.35);transition:transform .2s ease;font-family:Poppins,var(--text-font-family,sans-serif)}
+  #pgb-adv-launch:hover{transform:translateY(-2px) scale(1.04)}
+  #pgb-adv-launch:focus-visible{outline:2px solid #b23a5b;outline-offset:4px}
+  #pgb-adv-launch .pgbl-ask{font-size:10px;font-weight:500;line-height:1;letter-spacing:.12em;text-transform:uppercase;opacity:.85}
+  #pgb-adv-launch .pgbl-name{font-size:16px;font-weight:700;line-height:1.05;letter-spacing:.06em;text-transform:uppercase}
+  #pgb-adv-launch .pgbl-spark{position:absolute;top:-9px;right:-9px;width:20px;height:20px;padding:3px;border-radius:50%;background:#b23a5b;color:#fff;border:2px solid #fff;animation:pgblTw 2.4s ease-in-out infinite}
+  @keyframes pgblTw{0%,100%{opacity:.4;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}
+  #pgb-adv-nudge{position:fixed;right:100px;bottom:32px;font-family:Poppins,var(--text-font-family,sans-serif);z-index:2147483000;display:flex;align-items:center;gap:4px;
+    max-width:240px;padding:4px 4px 4px 0;background:#1a1a1a;color:#fff;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.2);
+    animation:pgbnIn .35s ease}
+  #pgb-adv-nudge[hidden]{display:none}
+  #pgb-adv-nudge .pgbn-text{background:none;border:0;color:#fff;font-family:inherit;font-size:13px;font-weight:500;line-height:1.35;text-align:left;padding:8px 4px 8px 14px;cursor:pointer}
+  #pgb-adv-nudge .pgbn-x{background:none;border:0;color:#aaa;font-size:18px;line-height:1;padding:6px 8px;cursor:pointer}
+  @keyframes pgbnIn{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:none}}
+  @media (max-width:749px){
+    #pgb-adv-launch{right:14px;bottom:16px;width:58px;height:58px}
+    #pgb-adv-launch.is-pdp{bottom:88px}
+    #pgb-adv-launch .pgbl-name{font-size:14px}
+    #pgb-adv-nudge{right:84px;bottom:24px;max-width:200px}
+    #pgb-adv-launch.is-pdp + #pgb-adv-nudge{bottom:96px}
+    #pgb-adv-nudge .pgbn-text{font-size:12px}
+  }
+  @media (prefers-reduced-motion:reduce){#pgb-adv-launch,#pgb-adv-launch .pgbl-spark,#pgb-adv-nudge{animation:none;transition:none}}
+</style>
+<script>
+  (function(){
+    var b=document.getElementById('pgb-adv-launch'); if(!b) return;
+    var n=document.getElementById('pgb-adv-nudge'), loading=false, KEY='pgbAdvNudge';
+    function open(){
+      if(n) n.hidden=true;
+      try{sessionStorage.setItem(KEY,'1')}catch(e){}
+      if(window.PGBAdvisor){window.PGBAdvisor.open();return;}
+      if(loading) return; loading=true; b.setAttribute('aria-busy','true');
+      var l=document.createElement('link'); l.rel='stylesheet'; l.href=b.dataset.css; document.head.appendChild(l);
+      var s=document.createElement('script'); s.src=b.dataset.js; s.async=true;
+      s.onload=function(){ b.removeAttribute('aria-busy'); window.PGBAdvisor && window.PGBAdvisor.init({api:b.dataset.api, name:b.dataset.name, launcher:b, promoText:b.dataset.promoText, promoUrl:b.dataset.promoUrl, links:b.dataset.links}); };
+      s.onerror=function(){ loading=false; b.removeAttribute('aria-busy'); };
+      document.body.appendChild(s);
+    }
+    b.addEventListener('click',open);
+    if(n){
+      n.querySelector('.pgbn-text').addEventListener('click',open);
+      n.querySelector('.pgbn-x').addEventListener('click',function(){ n.hidden=true; try{sessionStorage.setItem(KEY,'1')}catch(e){} });
+      var seen=false; try{seen=sessionStorage.getItem(KEY)==='1'}catch(e){}
+      if(!seen) setTimeout(function(){ if(!window.PGBAdvisorOpen){ n.hidden=false; setTimeout(function(){ n.hidden=true; },9000); } },6000);
+    }
+  })();
+</script>

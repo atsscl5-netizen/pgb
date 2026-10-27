@@ -1,0 +1,38 @@
+{%- layout none -%}
+{%- comment -%}
+  PGB Beauty Advisor — product feed for the chat backend.
+  URL: /collections/all?view=advisor-feed&page=1
+  Customers never see this; it is only read by the advisor backend every ~30 minutes.
+  "details" = specifications + FAQs + long description (from the custom.* metafields), so Pari can answer
+  questions like "potli ka size kya hai?" or "how many ml?".
+{%- endcomment -%}
+{%- paginate collection.products by 250 -%}
+{"per_page":250,"page":{{ paginate.current_page | json }},"pages":{{ paginate.pages | json }},"products":[
+{%- for product in collection.products -%}
+  {%- assign v = product.selected_or_first_available_variant -%}
+  {%- assign shade = product.metafields.custom.product_shade.value | default: '' -%}
+  {%- capture long_desc -%}{%- if product.description != blank -%}{{ product.description }}{%- elsif product.metafields.custom.description != blank -%}{{ product.metafields.custom.description | metafield_tag }}{%- endif -%}{%- endcapture -%}
+  {%- assign long_desc = long_desc | replace: '&lt;BR&gt;', ' ' | replace: '<BR>', ' ' | strip_html | strip_newlines -%}
+  {%- capture desc -%}{{ long_desc | truncatewords: 30, '' }}{%- endcapture -%}
+  {%- capture details -%}
+    {%- if product.metafields.custom.product_specification != blank -%}SPECS: {{ product.metafields.custom.product_specification | metafield_tag | replace: '&lt;BR&gt;', ' | ' | replace: '<BR>', ' | ' | strip_html | strip_newlines }} {% endif -%}
+    {%- assign faqs = product.metafields.custom.faq_schema.value -%}
+    {%- if faqs != blank -%}FAQ: {% for f in faqs limit: 12 %}Q: {{ f.q }} A: {{ f.a }} {% endfor %}{%- endif -%}
+    {%- if long_desc != blank -%}ABOUT: {{ long_desc | truncatewords: 120, '' }}{%- endif -%}
+  {%- endcapture -%}
+  {"handle":{{ product.handle | json }},
+   "title":{{ product.title | json }},
+   "type":{{ product.type | json }},
+   "tags":{{ product.tags | json }},
+   "price":{{ product.price | divided_by: 100.0 | json }},
+   "compare_at":{% if product.compare_at_price > product.price %}{{ product.compare_at_price | divided_by: 100.0 | json }}{% else %}null{% endif %},
+   "available":{{ product.available | json }},
+   "variant_id":{{ v.id | json }},
+   "image":{% if product.featured_image %}{{ product.featured_image | image_url: width: 240 | json }}{% else %}null{% endif %},
+   "url":{{ product.url | prepend: shop.secure_url | json }},
+   "shade":{{ shade | json }},
+   "desc":{{ desc | strip | json }},
+   "details":{{ details | strip | json }}}{% unless forloop.last %},{% endunless %}
+{%- endfor -%}
+]}
+{%- endpaginate -%}
