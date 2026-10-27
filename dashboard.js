@@ -46,12 +46,29 @@ main{max-width:1180px;margin:0 auto;padding:20px 16px 60px}
 .note{font-size:13px;color:var(--muted);background:#fff7f9;border:1px solid #f1d3dc;border-radius:6px;padding:10px 12px}
 table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;padding:6px 4px;border-bottom:1px solid var(--line)}
 .empty{color:var(--muted);font-size:13px}
+.h3{font-size:13px;font-weight:600;margin:14px 0 6px}
+.lesson{border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-bottom:8px;font-size:13px}
+.lesson .w{font-size:12px;color:var(--muted);margin-top:4px}.lesson .acts{display:flex;gap:6px;margin-top:8px}
+.lesson.active{border-color:#bfe0da;background:#f4fbf9}
+.sbtn{font:inherit;font-size:12px;border-radius:60px;padding:5px 12px;cursor:pointer;border:1px solid var(--g);background:#fff;color:var(--g)}
+.sbtn.ok{background:var(--g);color:#fff}.sbtn.no{border-color:#c9c9c9;color:var(--muted)}
+.gap{font-size:13px;padding:4px 0}.learn-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:860px){.learn-cols{grid-template-columns:1fr}}
 </style></head><body>
 <header><div class="av">${name.charAt(0)}</div><h1>${name} &middot; insights</h1>
 <div class="range"><button data-d="1">Today</button><button data-d="7" class="on">7 days</button><button data-d="30">30 days</button><button data-d="90">90 days</button></div>
 <a class="btn" id="csv" href="#">Export CSV</a></header>
 <main>
   <div class="kpis" id="kpis"></div>
+  <div class="card"><h2>${name}'s daily learning <span class="tag">self-improving</span></h2>
+    <p class="sub" id="learnSub">Every night ${name} reviews the day's chats, finds where she let shoppers down and writes lessons for tomorrow.</p>
+    <div class="learn-cols">
+      <div><div class="h3" id="repHead">Latest review</div><div id="learnReport" class="summary empty">Loading...</div>
+        <div class="h3">Info your team should add</div><div id="learnGaps" class="empty">-</div>
+        <div class="h3">Things shoppers wanted that we don't sell</div><div id="learnMissing" class="empty">-</div>
+        <p><button class="btn dark" id="learnBtn">Review today's chats now</button></p></div>
+      <div><div class="h3">New lessons waiting for your OK</div><div id="lsug" class="empty">-</div>
+        <div class="h3">Active lessons (${name} follows these now)</div><div id="lact" class="empty">-</div></div>
+    </div></div>
   <div class="grid">
     <div>
       <div class="card"><h2>Chats per day</h2><p class="sub">Conversations where a shopper asked at least one question</p>
@@ -129,7 +146,55 @@ async function load(){
   $('wa').innerHTML=(d.whatsapp&&d.whatsapp.length)?d.whatsapp.map(w=>'<div class="row" style="display:block;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line)">'+esc(w.q||'(no text)')+'<div style="font-size:11px;color:var(--muted)">'+new Date(w.at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+'</div></div>').join(''):'<div class="empty">None yet.</div>';
   $('summary').className='summary empty';$('summary').textContent='Click the button to create a summary.';
 }
-document.querySelectorAll('.range button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.range button').forEach(x=>x.classList.remove('on'));b.classList.add('on');DAYS=+b.dataset.d;load();});
+async function loadLearning(){
+  const r=await fetch('/dashboard/learning?key='+encodeURIComponent(KEY));const d=await r.json();
+  if(!d.enabled){$('learnReport').textContent='Needs the tracking database.';return;}
+  $('learnSub').textContent='Every night at '+d.time+' (India time) Pari reviews the day’s chats, finds where she let shoppers down and writes lessons for tomorrow. '+(d.auto?'Lessons switch on automatically.':'New lessons wait for your Approve.');
+  const rep=(d.reports||[])[0];
+  if(rep){$('repHead').textContent='Latest review · '+rep.day+(rep.chats!=null?' · '+rep.chats+' chats':'');
+    $('learnReport').className='summary'+(rep.summary?'':' empty');
+    $('learnReport').textContent=rep.status==='running'?'Reviewing now...':rep.status==='error'?'Review failed: '+(rep.error||''):(rep.summary||'No summary.');
+    const li=a=>(a&&a.length)?a.map(x=>'<div class="gap">• '+esc(x)+'</div>').join(''):'<div class="empty">Nothing.</div>';
+    $('learnGaps').innerHTML=li(rep.gaps);$('learnMissing').innerHTML=li(rep.missing);}
+  else{$('learnReport').textContent='No review yet. The first one runs tonight, or tap the button.';}
+  const card=(l,btns)=>'<div class="lesson '+l.status+'"><div>'+esc(l.lesson)+'</div>'+(l.why?'<div class="w">Why: '+esc(l.why)+(l.example?' · e.g. “'+esc(l.example)+'”':'')+'</div>':'')+'<div class="acts">'+btns+'</div></div>';
+  const sug=d.lessons.filter(l=>l.status==='suggested'), act=d.lessons.filter(l=>l.status==='active');
+  $('lsug').className=sug.length?'':'empty';$('lact').className=act.length?'':'empty';
+  $('lsug').innerHTML=sug.length?sug.map(l=>card(l,'<button class="sbtn ok" data-id="'+l.id+'" data-a="approve">✓ Approve</button><button class="sbtn no" data-id="'+l.id+'" data-a="reject">✕ Reject</button>')).join(''):'None waiting.';
+  $('lact').innerHTML=act.length?act.map(l=>card(l,'<button class="sbtn no" data-id="'+l.id+'" data-a="remove">Remove</button>')).join(''):'None yet.';
+  document.querySelectorAll('.sbtn[data-id]').forEach(b=>b.onclick=async()=>{b.disabled=true;
+    const r=await fetch('/dashboard/lessons?key='+encodeURIComponent(KEY)+'&id='+b.dataset.id+'&action='+b.dataset.a,{method:'POST'});
+    if(!r.ok){const e=await r.json().catch(()=>({}));alert(e.error||'Could not save');}loadLearning();});
+}
+$('learnBtn').onclick=async()=>{const b=$('learnBtn');b.disabled=true;b.textContent='Reviewing today’s chats... (about a minute)';
+  const r=await fetch('/dashboard/learning/run?key='+encodeURIComponent(KEY),{method:'POST'});const d=await r.json().catch(()=>({}));
+  b.disabled=false;b.textContent='Review today’s chats now';if(!r.ok)alert(d.error||'Review failed');loadLearning();};
+loadLearning();
+document.querySelectorAll('.range button').forEach(b=>b.onclick=()=>{async function loadLearning(){
+  const r=await fetch('/dashboard/learning?key='+encodeURIComponent(KEY));const d=await r.json();
+  if(!d.enabled){$('learnReport').textContent='Needs the tracking database.';return;}
+  $('learnSub').textContent='Every night at '+d.time+' (India time) Pari reviews the day’s chats, finds where she let shoppers down and writes lessons for tomorrow. '+(d.auto?'Lessons switch on automatically.':'New lessons wait for your Approve.');
+  const rep=(d.reports||[])[0];
+  if(rep){$('repHead').textContent='Latest review · '+rep.day+(rep.chats!=null?' · '+rep.chats+' chats':'');
+    $('learnReport').className='summary'+(rep.summary?'':' empty');
+    $('learnReport').textContent=rep.status==='running'?'Reviewing now...':rep.status==='error'?'Review failed: '+(rep.error||''):(rep.summary||'No summary.');
+    const li=a=>(a&&a.length)?a.map(x=>'<div class="gap">• '+esc(x)+'</div>').join(''):'<div class="empty">Nothing.</div>';
+    $('learnGaps').innerHTML=li(rep.gaps);$('learnMissing').innerHTML=li(rep.missing);}
+  else{$('learnReport').textContent='No review yet. The first one runs tonight, or tap the button.';}
+  const card=(l,btns)=>'<div class="lesson '+l.status+'"><div>'+esc(l.lesson)+'</div>'+(l.why?'<div class="w">Why: '+esc(l.why)+(l.example?' · e.g. “'+esc(l.example)+'”':'')+'</div>':'')+'<div class="acts">'+btns+'</div></div>';
+  const sug=d.lessons.filter(l=>l.status==='suggested'), act=d.lessons.filter(l=>l.status==='active');
+  $('lsug').className=sug.length?'':'empty';$('lact').className=act.length?'':'empty';
+  $('lsug').innerHTML=sug.length?sug.map(l=>card(l,'<button class="sbtn ok" data-id="'+l.id+'" data-a="approve">✓ Approve</button><button class="sbtn no" data-id="'+l.id+'" data-a="reject">✕ Reject</button>')).join(''):'None waiting.';
+  $('lact').innerHTML=act.length?act.map(l=>card(l,'<button class="sbtn no" data-id="'+l.id+'" data-a="remove">Remove</button>')).join(''):'None yet.';
+  document.querySelectorAll('.sbtn[data-id]').forEach(b=>b.onclick=async()=>{b.disabled=true;
+    const r=await fetch('/dashboard/lessons?key='+encodeURIComponent(KEY)+'&id='+b.dataset.id+'&action='+b.dataset.a,{method:'POST'});
+    if(!r.ok){const e=await r.json().catch(()=>({}));alert(e.error||'Could not save');}loadLearning();});
+}
+$('learnBtn').onclick=async()=>{const b=$('learnBtn');b.disabled=true;b.textContent='Reviewing today’s chats... (about a minute)';
+  const r=await fetch('/dashboard/learning/run?key='+encodeURIComponent(KEY),{method:'POST'});const d=await r.json().catch(()=>({}));
+  b.disabled=false;b.textContent='Review today’s chats now';if(!r.ok)alert(d.error||'Review failed');loadLearning();};
+loadLearning();
+document.querySelectorAll('.range button').forEach(x=>x.classList.remove('on'));b.classList.add('on');DAYS=+b.dataset.d;load();});
 $('sumBtn').onclick=async()=>{const s=$('summary');s.className='summary empty';s.textContent='Reading the questions...';
   const r=await fetch('/dashboard/summary?key='+encodeURIComponent(KEY)+'&days='+DAYS,{method:'POST'});const d=await r.json();
   s.className='summary'+(d.summary?'':' empty');s.textContent=d.summary||d.error||'No summary.';};

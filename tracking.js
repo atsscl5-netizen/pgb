@@ -11,6 +11,7 @@ let pool = null;
 let ready = false;
 
 export function trackingEnabled() { return ready; }
+export function db() { return ready ? pool : null; } // used by learning.js
 export function ordersEnabled() { return Boolean(SHOPIFY_TOKEN); }
 
 export async function initTracking() {

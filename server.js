@@ -11,6 +11,7 @@ import http from "node:http";
 import crypto from "node:crypto";
 import { initTracking, logChat, logEvent, dashboardData, questionsForSummary, exportCsv, trackingEnabled } from "./tracking.js";
 import { dashboardHtml } from "./dashboard.js";
+import { initLearning, lessonsText, learningData, setLesson, runLearning, maybeRunNightly } from "./learning.js";
 import { readFileSync } from "node:fs";
 
 // ---------- Settings (set these as environment variables on Render) ----------
@@ -201,9 +202,12 @@ const RESPOND_TOOL = {
 };
 
 async function askClaude(messages, detailsText, contextText) {
+  const lessons = await lessonsText();
   const system = [
     { type: "text", text: INSTRUCTIONS },
     { type: "text", text: `STORE KNOWLEDGE:\n${KNOWLEDGE || "(none)"}` },
+    // Lessons Pari learned from reviewing past chats (approved on the dashboard). Changes at most once a day.
+    ...(lessons ? [{ type: "text", text: `LEARNED TIPS (from reviewing past chats — follow them unless they conflict with the rules above; never invent offers, prices or products):\n${lessons}` }] : []),
     // The catalog is the big, repeated part — cached (with everything above it) so each chat costs less.
     { type: "text", text: `CATALOG (handle | title | type | price | shade | tags | description):\n${catalogText}`,
       cache_control: { type: "ephemeral" } },
@@ -233,6 +237,26 @@ async function askClaude(messages, detailsText, contextText) {
   const block = (data.content || []).find((b) => b.type === "tool_use");
   if (data.usage) console.log("[usage]", JSON.stringify(data.usage));
   return block ? block.input : { reply: "Sorry, I couldn't think of an answer. Please try again.", product_handles: [] };
+}
+
+// One forced-tool Claude call, used by the nightly review (learning.js).
+async function askTool(system, userText, tool) {
+  if (MOCK) return { summary: "(Test mode) review ran.", lessons: [{ lesson: "When a shopper asks for bold lipsticks, show one bold pack and two single bold shades.", why: "test", example: "Bold collection?" }], info_gaps: ["Test gap"], missing_products: [] };
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-api-key": API_KEY, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({ model: process.env.LEARN_MODEL || MODEL, max_tokens: 2500, system, tools: [tool],
+      tool_choice: { type: "tool", name: tool.name }, messages: [{ role: "user", content: userText }] }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(`Claude API ${res.status}: ${JSON.stringify(data).slice(0, 200)}`);
+  if (data.usage) console.log("[learn usage]", JSON.stringify(data.usage));
+  const block = (data.content || []).find((b) => b.type === "tool_use");
+  if (!block) throw new Error("Review returned no result");
+  return block.input;
+}
+function learnCtx() {
+  return { rules: INSTRUCTIONS, catalogTitles: catalog.map((p) => `${p.title} | ₹${p.price}`).join("\n") };
 }
 
 function mockAnswer(messages) {
@@ -440,6 +464,18 @@ async function handleDashboard(req, res, path) {
       res.writeHead(200, { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="pari-chats-${days}d.csv"` });
       return res.end(await exportCsv(days));
     }
+    // ---- Daily learning ----
+    if (req.method === "GET" && path === "/dashboard/learning") return json(200, await learningData());
+    if (req.method === "POST" && path === "/dashboard/learning/run") {
+      await ensureCatalog();
+      const day = new URL(req.url, "http://x").searchParams.get("day") || "";
+      return json(200, await runLearning({ day, ask: askTool, ctx: learnCtx() }));
+    }
+    if (req.method === "POST" && path === "/dashboard/lessons") {
+      const sp = new URL(req.url, "http://x").searchParams;
+      const ok = await setLesson(sp.get("id"), sp.get("action"));
+      return json(ok ? 200 : 400, ok ? { ok: true } : { error: "Bad request" });
+    }
     if (req.method === "POST" && path === "/dashboard/summary") {
       if (!trackingEnabled()) return json(200, { error: "Tracking is off." });
       const cacheKey = `${days}|${new Date().toISOString().slice(0, 13)}`; // re-summarise at most once an hour
@@ -479,6 +515,8 @@ server.listen(PORT, () => {
   console.log(`PGB Advisor backend on :${PORT} (model ${MODEL}${MOCK ? ", MOCK mode" : ""})`);
   if (!API_KEY && !MOCK) console.warn("WARNING: ANTHROPIC_API_KEY is not set");
   ensureCatalog().catch((e) => console.error("[catalog] first load failed:", e.message));
-  initTracking().catch((e) => console.error("[track] init failed:", e.message));
+  initTracking().then(initLearning).catch((e) => console.error("[track] init failed:", e.message));
+  // Nightly self-review (see learning.js). Checks every 10 minutes; runs once a day after LEARN_TIME_IST.
+  setInterval(() => { ensureCatalog().then(() => maybeRunNightly(askTool, learnCtx())).catch(() => {}); }, 10 * 60 * 1000).unref();
   setInterval(() => ensureCatalog().catch(() => {}), REFRESH_MIN * 60 * 1000).unref();
 });
