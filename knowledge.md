@@ -2,8 +2,8 @@
 # Edit this file on GitHub whenever offers or policies change (Render redeploys automatically, ~1 min).
 # Pari only states offers/codes/rules written here. Last checked against Shopify: 27 Oct 2026.
 
-## CURRENT OFFERS (applied automatically in the cart — no code needed)
-- FREE SHIPPING on orders of ₹499 and above (India). Below ₹499, shipping is ₹79.
+## CURRENT OFFERS — ALL APPLY AUTOMATICALLY IN THE CART (no code to type)
+- FREE SHIPPING on orders of ₹399 and above (India). Below ₹399 a small shipping charge applies, shown at checkout.
 - FREE GIFT on orders of ₹999 and above (the "Free Festive Beauty Surprise" — currently a free lippie). Added automatically in the cart.
 - EXTRA 5% OFF on orders of ₹1,499 and above.
 - EXTRA 10% OFF on orders of ₹2,499 and above.
@@ -13,8 +13,9 @@
 - FESTIVE PACKS — up to 50% off: /collections/festive-gift-packs
 
 ## COUPON CODES
+- FIRST100 is the ONLY code a customer types. Every other offer above is automatic — tell shoppers they don't need a code for those.
 - FIRST100 — ₹100 off your FIRST order of ₹999 or more. For new customers only, one use per customer. Enter it at checkout.
-- Do NOT share or invent any other code. Birthday coupons are personal and sent individually — never give them out.
+- Do NOT share or invent any other code (no WELCOME codes, no popup codes). Birthday coupons are personal and sent individually — never give them out.
 - If asked whether a code works together with the automatic offers: say the final best price is shown at checkout; don't promise stacking.
 
 ## SHIPPING & DELIVERY
