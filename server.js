@@ -154,7 +154,7 @@ Products:
 - "N shades/items under ₹X": show packs of about N items priced ≤ X, plus single products that let them build their own set (each single priced ≤ X). Mention that Buy 3 @ ₹999 is an option when it fits.
 - If the shopper says "no", "not this" or "something else", show DIFFERENT products from the ones you just showed — never repeat the same ones. If they name a product or collection (e.g. "the love collection"), show that product first.
 - If the shopper is on a product page (VIEWING below), that product is likely what "this" or "it" means.
-- Festive season: for gifting, festive, puja, bridal, suhaag, sargi or Karva Chauth questions, include Karva Chauth / festive gift packs from the catalog and link /collections/karva-chauth-specials.
+- Festive season (Diwali): for gifting, Diwali, festive, puja, bridal or suhaag questions, include festive/Diwali gift packs from the catalog and link /collections/festive-gift-packs. Don't state Diwali dates or delivery-before-Diwali promises.
 
 Offers, coupons, shipping, policies:
 - Use ONLY the STORE KNOWLEDGE. Never invent or guess an offer, coupon code, date, fee or rule. If it isn't there, say you're not sure and suggest WhatsApp.
@@ -190,7 +190,7 @@ const RESPOND_TOOL = {
       },
       links: {
         type: "array", maxItems: 3,
-        description: "Up to 3 store links with paths copied exactly from STORE KNOWLEDGE, e.g. {title:'Karva Chauth Specials', url:'/collections/karva-chauth-specials'}.",
+        description: "Up to 3 store links with paths copied exactly from STORE KNOWLEDGE, e.g. {title:'Diwali Gift Packs', url:'/collections/festive-gift-packs'}.",
         items: {
           type: "object",
           properties: { title: { type: "string", description: "2-4 word button label" }, url: { type: "string", description: "Path starting with /" } },
@@ -272,7 +272,7 @@ function mockAnswer(messages) {
     reply: scored.length ? "(Test mode) Here are some matches from your catalog:" : "(Test mode) No match — try 'red lip crayon'.",
     product_handles: scored.map(([, p]) => p.handle),
     suggestions: ["Under ₹500", "Bestsellers"],
-    links: /offer|coupon|karva|festive/.test(q) ? [{ title: "Karva Chauth Specials", url: "/collections/karva-chauth-specials" }, { title: "Bad link", url: "/admin" }] : [],
+    links: /offer|coupon|diwali|festive/.test(q) ? [{ title: "Diwali Gift Packs", url: "/collections/festive-gift-packs" }, { title: "Bad link", url: "/admin" }] : [],
   };
 }
 
@@ -368,7 +368,7 @@ function send(res, status, obj, origin) {
   const headers = { "content-type": "application/json; charset=utf-8", vary: "Origin" };
   if (origin && ALLOWED_ORIGINS.includes(origin)) {
     headers["access-control-allow-origin"] = origin;
-    headers["access-control-allow-methods"] = "POST, OPTIONS";
+    headers["access-control-allow-methods"] = "GET, POST, OPTIONS";
     headers["access-control-allow-headers"] = "content-type";
     headers["access-control-max-age"] = "86400";
   }
@@ -386,6 +386,22 @@ const server = http.createServer(async (req, res) => {
       knowledge: KNOWLEDGE.length > 0, store_links: KNOWN_PATHS.size, products_with_details: catalog.filter((p) => p.details).length,
       catalog_age_min: catalogLoadedAt ? Math.round((Date.now() - catalogLoadedAt) / 60000) : null }, origin);
   }
+  // ---- Deal tabs in the chat ("50% OFF", "60% OFF"): in-stock products picked from live prices ----
+  if (req.method === "GET" && path === "/deals") {
+    if (origin && !ALLOWED_ORIGINS.includes(origin)) return send(res, 403, { error: "Origin not allowed" }, origin);
+    try { await ensureCatalog(); } catch { return send(res, 502, { error: "Catalog unavailable" }, origin); }
+    const sp = new URL(req.url, "http://x").searchParams;
+    const min = Math.max(1, Math.min(95, Number(sp.get("min")) || 50));
+    const max = Math.max(min, Math.min(99, Number(sp.get("max")) || 99));
+    const products = catalog
+      .map((p) => ({ p, off: p.compare_at && Number(p.compare_at) > Number(p.price) ? Math.round((1 - Number(p.price) / Number(p.compare_at)) * 100) : 0 }))
+      .filter(({ off }) => off >= min && off <= max)
+      .sort((a, b) => b.off - a.off || Number(a.p.price) - Number(b.p.price))
+      .slice(0, 12)
+      .map(({ p, off }) => ({ handle: p.handle, title: p.title, price: p.price, compare_at: p.compare_at, variant_id: p.variant_id, image: p.image, url: p.url, shade: p.shade, off }));
+    return send(res, 200, { min, max, products }, origin);
+  }
+
   // ---- Insights dashboard (private: needs ?key=DASHBOARD_KEY) ----
   if (path.startsWith("/dashboard")) return handleDashboard(req, res, path);
 

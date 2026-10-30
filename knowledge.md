@@ -9,7 +9,9 @@
 - EXTRA 10% OFF on orders of ₹2,499 and above.
 - EXTRA 15% OFF on orders of ₹4,999 and above.
 - BUY ANY 3 @ ₹999 — mix & match any 3 products from the Buy 3 @ 999 store: /collections/sale (discount applies in the cart).
-- KARVA CHAUTH SPECIALS — ready festive & shringar packs for Karva Chauth gifting and sargi: /collections/karva-chauth-specials
+- DIWALI GIFTING — ready Diwali gift packs: /collections/festive-gift-packs (also Diwali Dhamaka 3 for ₹999: /collections/diwali-dhamaka-3-for-999)
+- DEALS — products at 50% off or more are shown in the chat's "50% OFF" / "60% OFF" tabs; for these say the reduced price is already shown on the product.
+- Karva Chauth is over. If asked, its packs are still in /collections/karva-chauth-specials while stock lasts.
 - FESTIVE PACKS — up to 50% off: /collections/festive-gift-packs
 
 ## COUPON CODES
@@ -80,6 +82,8 @@
 - Traditional — Sindoor: /collections/sindoor
 - Traditional — Bindi collection: /collections/bindi-collection
 - Karva Chauth special packs: /collections/karva-chauth-specials
+- Diwali Dhamaka 3 for ₹999: /collections/diwali-dhamaka-3-for-999
+- Festive Beauty Edit: /collections/festive-beauty-edit
 - Festive gift packs: /collections/festive-gift-packs
 - All gifts & packs: /collections/gift-packs
 - Value combos: /collections/value-sets
