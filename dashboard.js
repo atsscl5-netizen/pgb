@@ -59,6 +59,11 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;p
 <a class="btn" id="csv" href="#">Export CSV</a></header>
 <main>
   <div class="kpis" id="kpis"></div>
+  <div class="card"><h2>Daily email to the team <span class="tag">every morning</span></h2>
+    <p class="sub" id="mailSub">Loading...</p>
+    <div id="mailLog" class="empty"></div>
+    <p style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn ghost" id="mailPrev" target="_blank" rel="noopener" href="#">Preview yesterday’s email</a>
+      <button class="btn dark" id="mailSend">Send yesterday’s email now</button></p></div>
   <div class="card"><h2>${name}'s daily learning <span class="tag">self-improving</span></h2>
     <p class="sub" id="learnSub">Every night ${name} reviews the day's chats, finds where she let shoppers down and writes lessons for tomorrow.</p>
     <div class="learn-cols">
@@ -169,6 +174,18 @@ async function loadLearning(){
 $('learnBtn').onclick=async()=>{const b=$('learnBtn');b.disabled=true;b.textContent='Reviewing today’s chats... (about a minute)';
   const r=await fetch('/dashboard/learning/run?key='+encodeURIComponent(KEY),{method:'POST'});const d=await r.json().catch(()=>({}));
   b.disabled=false;b.textContent='Review today’s chats now';if(!r.ok)alert(d.error||'Review failed');loadLearning();};
+async function loadMail(){
+  const r=await fetch('/dashboard/report/status?key='+encodeURIComponent(KEY));const d=await r.json();
+  $('mailPrev').href='/dashboard/report/preview?key='+encodeURIComponent(KEY);
+  $('mailSub').textContent=d.configured?('Sent every day at '+d.time+' (India time) to '+d.to.join(', ')+(d.cc.length?' · cc '+d.cc.join(', '):'')+'. It summarises the previous day.'):'Not switched on yet: add SMTP_USER, SMTP_PASS and REPORT_TO in Render → Environment. You can already preview it.';
+  $('mailSend').style.display=d.configured?'':'none';
+  $('mailLog').className=(d.sent&&d.sent.length)?'':'empty';
+  $('mailLog').innerHTML=(d.sent&&d.sent.length)?d.sent.map(x=>'<div class="gap">'+esc(x.day)+' — '+(x.sent_at?'✓ sent to '+esc(x.recipients):'✕ failed: '+esc(x.error||''))+'</div>').join(''):'No emails sent yet.';
+}
+$('mailSend').onclick=async()=>{const b=$('mailSend');b.disabled=true;b.textContent='Sending...';
+  const r=await fetch('/dashboard/report/send?key='+encodeURIComponent(KEY),{method:'POST'});const d=await r.json().catch(()=>({}));
+  b.disabled=false;b.textContent='Send yesterday’s email now';alert(r.ok?'Sent to '+d.to.concat(d.cc||[]).join(', '):(d.error||'Could not send'));loadMail();};
+loadMail();
 loadLearning();
 document.querySelectorAll('.range button').forEach(b=>b.onclick=()=>{async function loadLearning(){
   const r=await fetch('/dashboard/learning?key='+encodeURIComponent(KEY));const d=await r.json();
@@ -193,6 +210,18 @@ document.querySelectorAll('.range button').forEach(b=>b.onclick=()=>{async funct
 $('learnBtn').onclick=async()=>{const b=$('learnBtn');b.disabled=true;b.textContent='Reviewing today’s chats... (about a minute)';
   const r=await fetch('/dashboard/learning/run?key='+encodeURIComponent(KEY),{method:'POST'});const d=await r.json().catch(()=>({}));
   b.disabled=false;b.textContent='Review today’s chats now';if(!r.ok)alert(d.error||'Review failed');loadLearning();};
+async function loadMail(){
+  const r=await fetch('/dashboard/report/status?key='+encodeURIComponent(KEY));const d=await r.json();
+  $('mailPrev').href='/dashboard/report/preview?key='+encodeURIComponent(KEY);
+  $('mailSub').textContent=d.configured?('Sent every day at '+d.time+' (India time) to '+d.to.join(', ')+(d.cc.length?' · cc '+d.cc.join(', '):'')+'. It summarises the previous day.'):'Not switched on yet: add SMTP_USER, SMTP_PASS and REPORT_TO in Render → Environment. You can already preview it.';
+  $('mailSend').style.display=d.configured?'':'none';
+  $('mailLog').className=(d.sent&&d.sent.length)?'':'empty';
+  $('mailLog').innerHTML=(d.sent&&d.sent.length)?d.sent.map(x=>'<div class="gap">'+esc(x.day)+' — '+(x.sent_at?'✓ sent to '+esc(x.recipients):'✕ failed: '+esc(x.error||''))+'</div>').join(''):'No emails sent yet.';
+}
+$('mailSend').onclick=async()=>{const b=$('mailSend');b.disabled=true;b.textContent='Sending...';
+  const r=await fetch('/dashboard/report/send?key='+encodeURIComponent(KEY),{method:'POST'});const d=await r.json().catch(()=>({}));
+  b.disabled=false;b.textContent='Send yesterday’s email now';alert(r.ok?'Sent to '+d.to.concat(d.cc||[]).join(', '):(d.error||'Could not send'));loadMail();};
+loadMail();
 loadLearning();
 document.querySelectorAll('.range button').forEach(x=>x.classList.remove('on'));b.classList.add('on');DAYS=+b.dataset.d;load();});
 $('sumBtn').onclick=async()=>{const s=$('summary');s.className='summary empty';s.textContent='Reading the questions...';

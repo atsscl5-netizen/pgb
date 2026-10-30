@@ -81,7 +81,9 @@ export async function maybeRunNightly(ask, ctx) {
   const pool = db(); if (!pool || running) return;
   const { day, mins } = istToday();
   if (mins < LEARN_TIME[0] * 60 + (LEARN_TIME[1] || 0)) return;
-  const { rows } = await pool.query(`select 1 from pari.reports where day=$1`, [day]);
+  // Skip only if tonight's full-day review already ran. A daytime "Review now" (partial day) doesn't count.
+  const { rows } = await pool.query(`select 1 from pari.reports where day=$1 and status in ('done','running')
+    and created_at >= ($1::date + $2::time) at time zone 'Asia/Kolkata'`, [day, LEARN_TIME.map((n) => String(n || 0).padStart(2, "0")).join(":")]);
   if (rows.length) return;
   await runLearning({ day, ask, ctx }).catch((e) => console.error("[learn] nightly:", e.message));
 }
