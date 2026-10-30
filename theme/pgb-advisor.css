@@ -123,3 +123,13 @@
   font-size:12.5px;font-weight:600;text-decoration:none!important;line-height:1.2}
 .pgba .pgba-link:hover{background:#0a443f}
 @media (max-width:749px){.pgba .pgba-promo{font-size:12.5px;padding:8px 12px}}
+
+/* Close button: draw the × with two lines so it is always centred (the font's × glyph sat off-centre) */
+.pgba .pgba-x{position:relative;flex:0 0 32px;font-size:0!important;color:transparent!important;overflow:hidden}
+.pgba .pgba-x::before,.pgba .pgba-x::after{content:"";position:absolute;left:50%;top:50%;width:14px;height:2px;margin:0;border-radius:2px;background:#fff;transform:translate(-50%,-50%) rotate(45deg)}
+.pgba .pgba-x::after{transform:translate(-50%,-50%) rotate(-45deg)}
+.pgba .pgba-x:hover{background:rgba(255,255,255,.24)}
+
+/* Deal tabs (50% OFF / 60% OFF) - filled offer pink so they stand out */
+.pgba .pgba-qbtn.pgba-deal{background:var(--pgba-pink);border-color:var(--pgba-pink);color:#fff!important;font-weight:600}
+.pgba .pgba-qbtn.pgba-deal:hover{background:#9a2f4d;border-color:#9a2f4d;color:#fff!important}

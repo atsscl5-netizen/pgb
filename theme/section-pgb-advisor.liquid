@@ -21,10 +21,10 @@
     endunless
   endif
 
-  assign promo_text = section.settings.promo_text | default: '🪔 Karva Chauth Specials — Shop now'
-  assign promo_url = section.settings.promo_url | default: '/collections/karva-chauth-specials'
+  assign promo_text = section.settings.promo_text | default: '🪔 Diwali Gift Packs — Shop now'
+  assign promo_url = section.settings.promo_url | default: '/collections/festive-gift-packs'
   assign quick_links = section.settings.quick_links
-  assign nudge_text = section.settings.nudge_text | default: "Karva Chauth gifts or your perfect shade? Ask me ✨"
+  assign nudge_text = section.settings.nudge_text | default: "Diwali gifts & up to 60% off — ask me ✨"
   if section.settings.promo_off
     assign promo_text = ''
   endif
@@ -58,11 +58,11 @@
     { "type": "checkbox", "id": "only_product_collection", "label": "Show only on product and collection pages", "default": true },
     { "type": "header", "content": "Promo bar (top of the chat)" },
     { "type": "checkbox", "id": "promo_off", "label": "Hide promo bar", "default": false },
-    { "type": "text", "id": "promo_text", "label": "Promo bar text", "default": "🪔 Karva Chauth Specials — Shop now" },
-    { "type": "text", "id": "promo_url", "label": "Promo bar link", "default": "/collections/karva-chauth-specials", "info": "A store path like /collections/karva-chauth-specials" },
+    { "type": "text", "id": "promo_text", "label": "Promo bar text", "default": "🪔 Diwali Gift Packs — Shop now" },
+    { "type": "text", "id": "promo_url", "label": "Promo bar link", "default": "/collections/festive-gift-packs", "info": "A store path like /collections/festive-gift-packs" },
     { "type": "header", "content": "Shortcut buttons" },
-    { "type": "textarea", "id": "quick_links", "label": "Shortcut buttons (one per line)", "default": "Buy 3 @ ₹999 | /collections/sale\nOffers & coupons | ask\nFestive Gift Packs | /collections/festive-gift-packs\nBestsellers | /collections/bestsellers", "info": "Format: Label | /collections/handle. Use \"ask\" instead of a link to make Pari answer that label as a question." },
-    { "type": "text", "id": "nudge_text", "label": "\"Hi\" bubble text", "default": "Karva Chauth gifts or your perfect shade? Ask me ✨" }
+    { "type": "textarea", "id": "quick_links", "label": "Shortcut buttons (one per line)", "default": "60% OFF | deals:60\n50% OFF | deals:50-59\nBuy 3 @ ₹999 | /collections/sale\nOffers & coupons | ask\nBestsellers | /collections/bestsellers", "info": "Format: Label | /collections/handle. Use \"ask\" to make Pari answer the label, or \"deals:60\" / \"deals:50-59\" to show in-stock products at that % off." },
+    { "type": "text", "id": "nudge_text", "label": "\"Hi\" bubble text", "default": "Diwali gifts & up to 60% off — ask me ✨" }
   ]
 }
 {% endschema %}

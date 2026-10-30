@@ -6,9 +6,10 @@
   var history = []; // [{role, content}] sent to the backend
   var busy = false;
   var STORE_KEY = "pgbAdvisorChat";
-  var STARTERS = ["Bridal / festive look", "Gift under ₹999"];
+  var STARTERS = ["Diwali gifts under ₹999", "Bridal / festive look"];
   // Shortcut buttons under the header. Edited in the theme editor (PGB Beauty Advisor > Shortcut buttons).
-  var DEFAULT_LINKS = "Buy 3 @ ₹999 | /collections/sale\nOffers & coupons | ask\nFestive Gift Packs | /collections/festive-gift-packs\nBestsellers | /collections/bestsellers";
+  // "deals:60" = in-stock products 60%+ off; "deals:50-59" = 50–59% off (picked live from prices by the backend).
+  var DEFAULT_LINKS = "60% OFF | deals:60\n50% OFF | deals:50-59\nBuy 3 @ ₹999 | /collections/sale\nOffers & coupons | ask\nBestsellers | /collections/bestsellers";
   var PROMO_TEXT = "", PROMO_URL = "", LINKS = DEFAULT_LINKS;
   var mobile = window.matchMedia("(max-width: 749px)");
   var SID = "", CART = "";
@@ -108,7 +109,7 @@
     head.appendChild(title);
     head.appendChild(close);
 
-    // ---- Promo bar (e.g. Karva Chauth Specials) + shortcut buttons, always visible under the header ----
+    // ---- Promo bar (e.g. Diwali Gift Packs) + shortcut buttons, always visible under the header ----
     var promo = null, promoHref = safeHref(PROMO_URL);
     if (PROMO_TEXT && promoHref) {
       promo = linkPill(PROMO_TEXT, promoHref, "promo_bar", "pgba-promo");
@@ -118,7 +119,13 @@
     String(LINKS || DEFAULT_LINKS).split(/\r?\n/).forEach(function (line) {
       var parts = line.split("|"), label = (parts[0] || "").trim(), target = (parts[1] || "").trim();
       if (!label) return;
-      if (/^ask$/i.test(target) || !target) {
+      var deal = target.match(/^deals:(\d{1,2})(?:-(\d{1,2}))?$/i);
+      if (deal) {
+        var d = el("button", "pgba-qbtn pgba-deal", label);
+        d.type = "button";
+        d.addEventListener("click", function () { track("link_click", { label: label, where: "deal_tab" }); showDeals(label, deal[1], deal[2]); });
+        quick.appendChild(d);
+      } else if (/^ask$/i.test(target) || !target) {
         var q = el("button", "pgba-qbtn", label);
         q.type = "button";
         q.addEventListener("click", function () { track("link_click", { label: label, where: "shortcut" }); ask(label); });
@@ -220,6 +227,30 @@
   }
 
   // Store links Pari shares in a reply (collections, policies), shown as tappable pills.
+  // Deal tab tapped: show in-stock products in that discount range straight in the chat.
+  function showDeals(label, min, max) {
+    if (busy) return;
+    busy = true;
+    bubble("me", label);
+    var typing = typingDots();
+    fetch(API.replace(/\/$/, "") + "/deals?min=" + encodeURIComponent(min) + (max ? "&max=" + encodeURIComponent(max) : ""))
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        typing.remove();
+        var items = (d && d.products) || [];
+        var text = items.length
+          ? label + " right now — " + items.length + " pick" + (items.length > 1 ? "s" : "") + ", lowest price already applied:"
+          : "Nothing in " + label + " right now. Have a look at our Buy 3 @ ₹999 store instead!";
+        bubble("bot", text);
+        if (items.length) cards(items); else links([{ title: "Buy 3 @ ₹999", url: "/collections/sale" }]);
+        history.push({ role: "user", content: label });
+        history.push({ role: "assistant", content: text + (items.length ? " [Showed: " + items.map(function (p) { return p.title; }).join("; ") + "]" : "") });
+        save();
+      })
+      .catch(function () { typing.remove(); bubble("bot", "Sorry, I couldn't load the deals. Please try again."); })
+      .then(function () { busy = false; });
+  }
+
   function links(items) {
     if (!items || !items.length) return;
     var row = el("div", "pgba-links");
@@ -388,8 +419,8 @@
       NAME = opts.name || NAME;
       launcher = opts.launcher;
       // Promo bar: shown only when the theme passes text (an empty value = turned off in the theme editor).
-      // Older snippet without the setting → Karva Chauth default.
-      if (opts.promoText === undefined) { PROMO_TEXT = "🪔 Karva Chauth Specials — Shop now"; PROMO_URL = "/collections/karva-chauth-specials"; }
+      // Older snippet without the setting → Diwali default.
+      if (opts.promoText === undefined) { PROMO_TEXT = "🪔 Diwali Gift Packs — Shop now"; PROMO_URL = "/collections/festive-gift-packs"; }
       else { PROMO_TEXT = opts.promoText || ""; PROMO_URL = opts.promoUrl || ""; }
       LINKS = opts.links && opts.links.trim() ? opts.links : DEFAULT_LINKS;
       build();
