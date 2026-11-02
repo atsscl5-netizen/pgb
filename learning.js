@@ -7,13 +7,15 @@
 // shipping or policies is rejected — those facts live only in knowledge.md, written by the team.
 //
 // Settings (Render environment variables):
-//   AUTO_LESSONS=1        → new lessons switch on by themselves (default: wait for Approve on the dashboard)
+//   AUTO_LESSONS=0        → new lessons wait for Approve on the dashboard (default: they switch on by themselves)
+// When there are more than MERGE_AT active lessons, Pari merges them into fewer, clearer ones — so there is no hard limit.
 //   LEARN_TIME_IST=23:30  → when the nightly review runs (India time)
 import { db } from "./tracking.js";
 
-const AUTO = process.env.AUTO_LESSONS === "1";
+const AUTO = process.env.AUTO_LESSONS !== "0";
 const LEARN_TIME = (process.env.LEARN_TIME_IST || "23:30").split(":").map(Number);
-const MAX_ACTIVE = 30;
+const MAX_ACTIVE = 40;   // most lessons ever sent to Pari at once
+const MERGE_AT = 25;     // above this many active lessons, merge them into ~15–20
 const TEST_SIDS = ["claudetest027", "setupcheck0001", "mvqckihk6weebx9p", "watestlive001"];
 // Lessons may not touch facts the team owns (knowledge.md) — those must never be "learned" from chats.
 const FORBIDDEN = /coupon|promo ?code|discount code|\bcode\b|% ?off|free shipping|shipping (fee|charge)|\bcod\b|refund|return policy|exchange policy|cancel|delivery (time|days)|dispatch/i;
@@ -62,10 +64,6 @@ export async function setLesson(id, action) {
   const pool = db(); if (!pool) return false;
   const status = { approve: "active", reject: "rejected", remove: "removed" }[action];
   if (!status || !/^\d+$/.test(String(id))) return false;
-  if (status === "active") {
-    const { rows } = await pool.query(`select count(*)::int as n from pari.lessons where status='active'`);
-    if (rows[0].n >= MAX_ACTIVE) throw new Error(`Already ${MAX_ACTIVE} active lessons — remove one first.`);
-  }
   await pool.query(`update pari.lessons set status=$1, decided_at=now() where id=$2`, [status, Number(id)]);
   cache.at = 0;
   return true;
@@ -143,13 +141,18 @@ Write in simple English for a busy store team.`;
     for (const l of (out.lessons || []).slice(0, 5)) {
       const text = String(l.lesson || "").replace(/\s+/g, " ").trim().slice(0, 300);
       if (text.length < 15 || FORBIDDEN.test(text) || existing.has(text.toLowerCase())) continue;
-      const status = AUTO && made < MAX_ACTIVE ? "active" : "suggested";
+      const status = AUTO ? "active" : "suggested";
       if (status === "active") made++;
       await pool.query(`insert into pari.lessons (day, status, lesson, why, example, decided_at) values ($1,$2,$3,$4,$5,$6)`,
         [day, status, text, String(l.why || "").slice(0, 400), String(l.example || "").slice(0, 200), status === "active" ? new Date() : null]);
       added++;
     }
     cache.at = 0;
+    if (AUTO) {
+      // Auto mode: anything still waiting from before is switched on too, then merge if there are too many.
+      await pool.query(`update pari.lessons set status='active', decided_at=now() where status='suggested'`);
+      await consolidateLessons(ask, ctx).catch((e) => console.error("[learn] merge:", e.message));
+    }
     const clean = (a) => JSON.stringify((Array.isArray(a) ? a : []).slice(0, 8).map((x) => String(x).slice(0, 240)));
     await pool.query(`update pari.reports set status='done', chats=$2, summary=$3, gaps=$4, missing=$5 where day=$1`,
       [day, chats.length, String(out.summary || "").slice(0, 1500), clean(out.info_gaps), clean(out.missing_products)]);
@@ -160,6 +163,42 @@ Write in simple English for a busy store team.`;
     throw e;
   } finally { running = false; }
 }
+
+// Merges active lessons into fewer, clearer ones when there are more than MERGE_AT.
+export async function consolidateLessons(ask, ctx) {
+  const pool = db(); if (!pool) return { merged: 0 };
+  const { rows } = await pool.query(`select id, lesson from pari.lessons where status='active' order by id`);
+  if (rows.length <= MERGE_AT) return { merged: 0 };
+  const system = `You maintain the list of lessons that "Pari", an AI beauty guide for an Indian makeup store, follows. The list has grown too long. Rewrite it as 12–20 lessons: merge duplicates and overlapping lessons, keep specific product names and the most useful details, drop lessons that are outdated (e.g. about a festival that has passed), and keep each lesson under 250 characters, written as an instruction to Pari. Never add lessons about offers, coupon codes, discounts, prices of offers, shipping, COD, delivery times, returns, refunds or cancellations. Never invent products or facts. Don't contradict PARI'S RULES.`;
+  const user = `PARI'S RULES:\n${ctx.rules}\n\nCURRENT LESSONS (${rows.length}):\n` + rows.map((r, i) => `${i + 1}. ${r.lesson}`).join("\n");
+  const out = await ask(system, user, MERGE_TOOL);
+  const fresh = (out.lessons || []).map((l) => String(l.lesson || "").replace(/\s+/g, " ").trim().slice(0, 300))
+    .filter((t) => t.length >= 15 && !FORBIDDEN.test(t)).slice(0, 20);
+  if (fresh.length < 5) throw new Error("merge returned too few lessons — kept the old list");
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    await client.query(`update pari.lessons set status='merged', decided_at=now() where id = any($1)`, [rows.map((r) => r.id)]);
+    for (const t of fresh) {
+      await client.query(`insert into pari.lessons (day, status, lesson, why, decided_at) values (current_date,'active',$1,$2,now())`,
+        [t, `Merged from ${rows.length} earlier lessons`]);
+    }
+    await client.query("commit");
+  } catch (e) { await client.query("rollback"); throw e; } finally { client.release(); }
+  cache.at = 0;
+  console.log(`[learn] merged ${rows.length} lessons into ${fresh.length}`);
+  return { merged: rows.length, now: fresh.length };
+}
+
+const MERGE_TOOL = {
+  name: "merged_lessons",
+  description: "Return the new, shorter list of lessons. Call exactly once.",
+  input_schema: {
+    type: "object",
+    properties: { lessons: { type: "array", maxItems: 20, items: { type: "object", properties: { lesson: { type: "string" } }, required: ["lesson"] } } },
+    required: ["lessons"],
+  },
+};
 
 const REVIEW_TOOL = {
   name: "daily_review",

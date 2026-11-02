@@ -242,6 +242,7 @@ async function askClaude(messages, detailsText, contextText) {
 
 // One forced-tool Claude call, used by the nightly review (learning.js).
 async function askTool(system, userText, tool) {
+  if (MOCK && tool.name === "merged_lessons") return { lessons: Array.from({ length: 6 }, (_, i) => ({ lesson: `Merged test lesson number ${i + 1} about showing packs and singles.` })) };
   if (MOCK && tool.name === "daily_summary") return { headline: "(Test mode) Most customers asked about bold lip shades and offers.", top_asks: [{ topic: "Bold lip shades", count: 3, example: "Bold collection?" }], products_wanted: ["Bold red lipsticks under ₹600"], offer_ideas: ["Budgets around ₹500–600 → a 3-shade bold pack at ₹599"], website_fixes: ["Add potli capacity"], not_sold: ["Concealer"] };
   if (MOCK) return { summary: "(Test mode) review ran.", lessons: [{ lesson: "When a shopper asks for bold lipsticks, show one bold pack and two single bold shades.", why: "test", example: "Bold collection?" }], info_gaps: ["Test gap"], missing_products: [] };
   const res = await fetch("https://api.anthropic.com/v1/messages", {

@@ -71,7 +71,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;p
         <div class="h3">Info your team should add</div><div id="learnGaps" class="empty">-</div>
         <div class="h3">Things shoppers wanted that we don't sell</div><div id="learnMissing" class="empty">-</div>
         <p><button class="btn dark" id="learnBtn">Review today's chats now</button></p></div>
-      <div><div class="h3">New lessons waiting for your OK</div><div id="lsug" class="empty">-</div>
+      <div><div class="h3">Lessons waiting for your OK (only when auto mode is off)</div><div id="lsug" class="empty">-</div>
         <div class="h3">Active lessons (${name} follows these now)</div><div id="lact" class="empty">-</div></div>
     </div></div>
   <div class="grid">
@@ -154,7 +154,7 @@ async function load(){
 async function loadLearning(){
   const r=await fetch('/dashboard/learning?key='+encodeURIComponent(KEY));const d=await r.json();
   if(!d.enabled){$('learnReport').textContent='Needs the tracking database.';return;}
-  $('learnSub').textContent='Every night at '+d.time+' (India time) Pari reviews the day’s chats, finds where she let shoppers down and writes lessons for tomorrow. '+(d.auto?'Lessons switch on automatically.':'New lessons wait for your Approve.');
+  $('learnSub').textContent='Every night at '+d.time+' (India time) Pari reviews the day’s chats, finds where she let shoppers down and writes lessons for tomorrow. '+(d.auto?'New lessons switch on automatically, and when there are too many Pari merges them into fewer, clearer ones. Remove any you disagree with.':'New lessons wait for your Approve.');
   const rep=(d.reports||[])[0];
   if(rep){$('repHead').textContent='Latest review · '+rep.day+(rep.chats!=null?' · '+rep.chats+' chats':'');
     $('learnReport').className='summary'+(rep.summary?'':' empty');
@@ -190,7 +190,7 @@ loadLearning();
 document.querySelectorAll('.range button').forEach(b=>b.onclick=()=>{async function loadLearning(){
   const r=await fetch('/dashboard/learning?key='+encodeURIComponent(KEY));const d=await r.json();
   if(!d.enabled){$('learnReport').textContent='Needs the tracking database.';return;}
-  $('learnSub').textContent='Every night at '+d.time+' (India time) Pari reviews the day’s chats, finds where she let shoppers down and writes lessons for tomorrow. '+(d.auto?'Lessons switch on automatically.':'New lessons wait for your Approve.');
+  $('learnSub').textContent='Every night at '+d.time+' (India time) Pari reviews the day’s chats, finds where she let shoppers down and writes lessons for tomorrow. '+(d.auto?'New lessons switch on automatically, and when there are too many Pari merges them into fewer, clearer ones. Remove any you disagree with.':'New lessons wait for your Approve.');
   const rep=(d.reports||[])[0];
   if(rep){$('repHead').textContent='Latest review · '+rep.day+(rep.chats!=null?' · '+rep.chats+' chats':'');
     $('learnReport').className='summary'+(rep.summary?'':' empty');
