@@ -127,9 +127,9 @@ export async function dashboardData(days) {
 
   const daily = await q(`
     select to_char(d::date,'YYYY-MM-DD') as day,
-      (select count(*) from pari.sessions s where s.messages>0 and s.started_at::date = d::date) as chats,
-      (select count(*) from pari.events e where e.type='add_to_cart' and e.at::date = d::date) as atc
-    from generate_series((${since})::date, now()::date, interval '1 day') d order by d`);
+      (select count(*) from pari.sessions s where s.messages>0 and s.started_at >= ${since} and (s.started_at at time zone 'Asia/Kolkata')::date = d::date) as chats,
+      (select count(*) from pari.events e where e.type='add_to_cart' and e.at >= ${since} and (e.at at time zone 'Asia/Kolkata')::date = d::date) as atc
+    from generate_series(((${since}) at time zone 'Asia/Kolkata')::date, (now() at time zone 'Asia/Kolkata')::date, interval '1 day') d order by d`);
 
   const recommended = await q(`
     select p->>'title' as title, count(*) as times
