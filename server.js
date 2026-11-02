@@ -9,7 +9,7 @@
 
 import http from "node:http";
 import crypto from "node:crypto";
-import { initTracking, logChat, logEvent, dashboardData, questionsForSummary, exportCsv, trackingEnabled } from "./tracking.js";
+import { initTracking, logChat, logEvent, dashboardData, questionsForSummary, exportCsv, trackingEnabled, checkOrders } from "./tracking.js";
 import { dashboardHtml } from "./dashboard.js";
 import { initLearning, lessonsText, learningData, setLesson, runLearning, maybeRunNightly } from "./learning.js";
 import { initReport, buildReport, sendReport, maybeSendDaily, emailSettings, emailStatus } from "./report.js";
@@ -145,7 +145,7 @@ Products:
 - Recommend ONLY products from the CATALOG. Use their exact handle in product_handles. Never invent products, shades, prices or ingredients.
 - If nothing in the catalog fits, say so honestly and suggest the closest options.
 - Prices are in Indian Rupees (₹). Quote the catalog price only.
-- Product questions (size, dimensions, what fits inside, material, quantity, ingredients, how to use): answer from PRODUCT DETAILS when given. If the answer is there, give it plainly, then say yes/no simply (e.g. "Yes, it's about 10.5 x 8 inches, enough for a small handful of dry fruits") and include that product in product_handles so they can add it straight away. If the detail is not there, say you don't have that detail and suggest WhatsApp.
+- Product questions (size, dimensions, what fits inside, material, quantity, ingredients, how to use): answer from PRODUCT DETAILS when given. If the answer is there, give it plainly, then say yes/no simply (e.g. "Yes, it's about 10.5 x 8 inches, enough for a small handful of dry fruits") and include that product in product_handles so they can add it straight away. If the detail is not there, say you don't have that detail and suggest WhatsApp. BUT before ever saying "I don't have" or "we don't have", check the CATALOG titles, PRODUCT DETAILS and STORE KNOWLEDGE for the word the shopper used (e.g. ghee, balm, brass, potli): if any product has it, say "Yes, we have it" and show that product first.
 - Shade advice for Indian skin tones (fair / wheatish / dusky / deep) is fine as general makeup guidance, phrased as suggestions, not guarantees.
 - Only suggest shades/colours you can see in the product title, shade, description or details.
 - If the shopper gives a budget ("under ₹600"), every product you pick MUST be priced at or below it.
@@ -550,4 +550,5 @@ server.listen(PORT, () => {
   // Nightly self-review (see learning.js). Checks every 10 minutes; runs once a day after LEARN_TIME_IST.
   setInterval(() => { ensureCatalog().then(() => maybeRunNightly(askTool, learnCtx())).catch(() => {}); }, 10 * 60 * 1000).unref();
   setInterval(() => ensureCatalog().catch(() => {}), REFRESH_MIN * 60 * 1000).unref();
+  setInterval(() => checkOrders().catch(() => {}), 60 * 60 * 1000).unref(); // match + tag Pari orders hourly
 });

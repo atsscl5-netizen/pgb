@@ -184,9 +184,26 @@ export async function exportCsv(days) {
 }
 
 // ---------------- Purchases (needs SHOPIFY_ADMIN_TOKEN with read_orders) ----------------
+// If the token also has write_orders, matched orders get a visible tag in Shopify admin
+// ("Pari" = bought an item added from Pari's cards, "Pari chat" = chatted with Pari, then bought).
+const tagged = new Set();
+let canTag = true;
+async function tagOrder(o, tag) {
+  if (!canTag || tagged.has(o.id) || (o.tags || []).includes(tag)) return;
+  tagged.add(o.id);
+  try {
+    const res = await fetch(`https://${SHOP}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`, {
+      method: "POST", headers: { "content-type": "application/json", "x-shopify-access-token": SHOPIFY_TOKEN },
+      body: JSON.stringify({ query: `mutation($id:ID!,$t:[String!]!){ tagsAdd(id:$id, tags:$t){ userErrors{ message } } }`, variables: { id: o.id, t: [tag] } }),
+    });
+    const d = await res.json();
+    if (d.errors && JSON.stringify(d.errors).match(/access|scope|denied/i)) { canTag = false; console.warn("[track] no write_orders scope, order tagging off"); }
+  } catch (e) { console.error("[track] tagOrder:", e.message); }
+}
 // "Bought via Pari"   = order contains an item added from a Pari card (hidden item note _pari).
 // "Bought after chat" = order's cart token matches a cart that chatted with Pari (bought anything).
 let purchaseCache = { key: "", at: 0, data: null };
+export async function checkOrders() { if (ready && SHOPIFY_TOKEN) await purchaseStats(2); }
 async function purchaseStats(days) {
   const key = String(days);
   if (purchaseCache.key === key && Date.now() - purchaseCache.at < 10 * 60 * 1000) return purchaseCache.data;
@@ -199,7 +216,7 @@ async function purchaseStats(days) {
   for (let page = 0; page < 20; page++) {
     const body = {
       query: `query($q:String!,$after:String){ orders(first:100, after:$after, query:$q){
-        nodes{ name createdAt totalPriceSet{shopMoney{amount}} customAttributes{key value}
+        nodes{ id name tags createdAt totalPriceSet{shopMoney{amount}} customAttributes{key value}
           lineItems(first:50){ nodes{ title quantity customAttributes{key value} originalTotalSet{shopMoney{amount}} } } }
         pageInfo{ hasNextPage endCursor } } }`,
       variables: { q: `created_at:>=${sinceDate}`, after },
@@ -217,6 +234,7 @@ async function purchaseStats(days) {
       const pariLines = o.lineItems.nodes.filter((li) => li.customAttributes.some((a) => a.key === "_pari"));
       const tokenAttr = o.customAttributes.find((a) => a.key === "shopifyCartToken");
       const tok = tokenAttr ? cleanToken(tokenAttr.value) : null;
+      if (pariLines.length || (tok && tokens.has(tok))) tagOrder(o, pariLines.length ? "Pari" : "Pari chat");
       if (pariLines.length) {
         viaPari.push({ name: o.name, at: o.createdAt, total,
           items: pariLines.map((li) => li.title), pari_value: pariLines.reduce((s, li) => s + Number(li.originalTotalSet.shopMoney.amount), 0) });

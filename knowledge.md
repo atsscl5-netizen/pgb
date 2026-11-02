@@ -18,7 +18,8 @@
 - Signature Sindoor Pack: Liquid & Powder (KumKum) — ₹395. Both liquid sindoor and powder sindoor in one pack.
 - "₹100 SINDOOR" DIWALI OFFER (from Parul's ad) = Festive-Ready Bestseller Duo: 10-in-1 Lipstick Set (₹990) + Signature Sindoor Pack for just ₹100 more → ₹1,090 total instead of ₹1,385 (you save ₹295). Sindoor alone is not ₹100 — it's ₹100 extra with the 10-in-1 set.
 - Packs that include sindoor: Bold Festive Glam Trio ₹990, Soft Festive Glam Trio ₹990, Festive Beauty Shringar Pack ₹990, Shaadi Ready Beauty Edit – Deep & Bold ₹999, The Shringaar Celebration Pack ₹1,490, The Timeless Traditions Gift Pack ₹1,490, Signature Shringar Glam Pack ₹1,499.
-- Signature Kum Kum Bindi Pack ₹799 is kumkum for bindi (red & maroon kumkum, ghee balm, brass applicator), not the sindoor pack.
+- GHEE / BALM: we DO have it. Signature Kum Kum Bindi Pack ₹799 = Red & Maroon Kumkum powders (10 g each) + Natural Kumkum Balm (5 g) made with Ghee, Coconut Oil & Beeswax + handcrafted 100% brass dual-tip applicator. The balm holds the kumkum in place. When a shopper says "sindoor with ghee", "ghee sindoor", "balm sindoor", "kumkum balm" or "natural/traditional kumkum", show this pack FIRST and say yes, we have it, with the ghee balm. Never say we don't have ghee or balm.
+- The Signature Sindoor Pack (₹395, liquid + powder) has no ghee/balm; vegan, smudge-proof formula.
 
 ## COUPON CODES
 - FIRST100 is the ONLY code a customer types. Every other offer above is automatic — tell shoppers they don't need a code for those.
