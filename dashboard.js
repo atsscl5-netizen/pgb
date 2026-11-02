@@ -111,7 +111,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:24px}
 <div class="hero"><div class="wrap">
   <div class="top">
     <div class="logo">${name.charAt(0)}</div>
-    <h1>${name} Insights<small>AI beauty advisor · Parul Garg Beauty</small></h1>
+    <h1>${name} Insights<small id="fromtxt">AI beauty advisor · Parul Garg Beauty</small></h1>
     <span class="live"><i></i>Live</span>
     <div class="seg" id="range"><button data-d="1">Today</button><button data-d="7" class="on">7 days</button><button data-d="30">30 days</button><button data-d="90">90 days</button></div>
     <a class="ghostbtn" id="csv" href="#">Export CSV</a>
@@ -263,7 +263,7 @@ function load(){
   fetch(api('data?days='+DAYS)).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});}).then(function(x){var d=x.d;
     if(!x.ok){document.querySelector('main').innerHTML='<div class="card note">'+esc(d.error||'Not allowed')+'</div>';return;}
     if(!d.tracking){document.querySelector('main').innerHTML='<div class="card note">Tracking is off: the backend has no DATABASE_URL yet.</div>';return;}
-    LAST=d; kpis(d.kpi,d.daily); chart(d.daily); funnel(d.kpi,d.ordersEnabled?d.purchases:null); purchases(d);
+    LAST=d; if(d.from)$('fromtxt').textContent='AI beauty advisor · counting from '+new Date(d.from+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); kpis(d.kpi,d.daily); chart(d.daily); funnel(d.kpi,d.ordersEnabled?d.purchases:null); purchases(d);
     rows($('added'),d.added,'title','times',function(i){return num(i.times)+' · '+inr(i.value);});
     rows($('rec'),d.recommended,'title','times'); rows($('pages'),d.pages,'page','chats');
     rows($('links'),(d.links||[]).map(function(l){return {label:l.label+(l.where_from?' · '+l.where_from:''),times:l.times};}),'label','times');

@@ -6,6 +6,11 @@ const DATABASE_URL = process.env.DATABASE_URL || "";
 const SHOP = process.env.SHOPIFY_SHOP || "parulgargbeauty.myshopify.com";
 const SHOPIFY_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN || ""; // optional: read_orders, to count purchases
 const SHOPIFY_API_VERSION = process.env.SHOPIFY_API_VERSION || "2026-01";
+// Dashboard numbers start from this moment (older chats stay saved for learning, just not counted).
+// Change in Render with DASHBOARD_FROM=YYYY-MM-DD (India time) to reset again.
+const FROM_DAY = /^\d{4}-\d{2}-\d{2}$/.test(process.env.DASHBOARD_FROM || "") ? process.env.DASHBOARD_FROM : "2026-11-02";
+const FROM_TS = `${FROM_DAY}T00:00:00+05:30`;
+export function dashboardFrom() { return FROM_DAY; }
 
 let pool = null;
 let ready = false;
@@ -105,7 +110,7 @@ export async function logEvent({ sid, type, data, page, ua, cart }) {
 // ---------------- Dashboard numbers ----------------
 export async function dashboardData(days) {
   if (!ready) return { tracking: false };
-  const since = `now() - interval '${Math.max(1, Math.min(365, Number(days) || 7))} days'`;
+  const since = `greatest(now() - interval '${Math.max(1, Math.min(365, Number(days) || 7))} days', '${FROM_TS}'::timestamptz)`;
   const q = (sql, args = []) => pool.query(sql, args).then((r) => r.rows);
 
   const [kpi] = await q(`
@@ -161,7 +166,7 @@ export async function dashboardData(days) {
   if (SHOPIFY_TOKEN) {
     try { purchases = await purchaseStats(days); } catch (e) { purchases = { error: e.message.slice(0, 200) }; }
   }
-  return { tracking: true, days: Number(days) || 7, kpi, daily, recommended, added, pages, whatsapp, links, convos, purchases, ordersEnabled: Boolean(SHOPIFY_TOKEN) };
+  return { tracking: true, days: Number(days) || 7, from: FROM_DAY, kpi, daily, recommended, added, pages, whatsapp, links, convos, purchases, ordersEnabled: Boolean(SHOPIFY_TOKEN) };
 }
 
 export async function questionsForSummary(days) {
@@ -207,7 +212,7 @@ export async function checkOrders() { if (ready && SHOPIFY_TOKEN) await purchase
 async function purchaseStats(days) {
   const key = String(days);
   if (purchaseCache.key === key && Date.now() - purchaseCache.at < 10 * 60 * 1000) return purchaseCache.data;
-  const sinceDate = new Date(Date.now() - (Number(days) || 7) * 86400000).toISOString();
+  const sinceDate = new Date(Math.max(Date.now() - (Number(days) || 7) * 86400000, Date.parse(FROM_TS))).toISOString();
   const tokens = new Set((await pool.query(
     `select cart_token from pari.sessions where cart_token is not null and messages > 0 and started_at >= $1::timestamptz - interval '1 day'`,
     [sinceDate])).rows.map((r) => r.cart_token));
