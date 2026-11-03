@@ -207,58 +207,76 @@ async function tagOrder(o, tag) {
 }
 // "Bought via Pari"   = order contains an item added from a Pari card (hidden item note _pari).
 // "Bought after chat" = order's cart token matches a cart that chatted with Pari (bought anything).
-let purchaseCache = { key: "", at: 0, data: null };
-export async function checkOrders() { if (ready && SHOPIFY_TOKEN) await purchaseStats(2); }
-async function purchaseStats(days) {
-  const key = String(days);
-  if (purchaseCache.key === key && Date.now() - purchaseCache.at < 10 * 60 * 1000) return purchaseCache.data;
-  const sinceDate = new Date(Math.max(Date.now() - (Number(days) || 7) * 86400000, Date.parse(FROM_TS))).toISOString();
-  const tokens = new Set((await pool.query(
-    `select cart_token from pari.sessions where cart_token is not null and messages > 0 and started_at >= $1::timestamptz - interval '1 day'`,
-    [sinceDate])).rows.map((r) => r.cart_token));
-
-  let after = null, viaPari = [], afterChat = [], scanned = 0;
-  for (let page = 0; page < 20; page++) {
-    const body = {
-      query: `query($q:String!,$after:String){ orders(first:100, after:$after, query:$q){
-        nodes{ id name tags createdAt totalPriceSet{shopMoney{amount}} customAttributes{key value}
-          lineItems(first:50){ nodes{ title quantity customAttributes{key value} originalTotalSet{shopMoney{amount}} } } }
-        pageInfo{ hasNextPage endCursor } } }`,
-      variables: { q: `created_at:>=${sinceDate}`, after },
-    };
-    const res = await fetch(`https://${SHOP}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`, {
-      method: "POST", headers: { "content-type": "application/json", "x-shopify-access-token": SHOPIFY_TOKEN },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    if (!res.ok || data.errors) throw new Error(`Shopify ${res.status}: ${JSON.stringify(data.errors || data).slice(0, 150)}`);
-    const conn = data.data.orders;
-    for (const o of conn.nodes) {
-      scanned++;
-      const total = Number(o.totalPriceSet.shopMoney.amount);
-      const pariLines = o.lineItems.nodes.filter((li) => li.customAttributes.some((a) => a.key === "_pari"));
-      const tokenAttr = o.customAttributes.find((a) => a.key === "shopifyCartToken");
-      const tok = tokenAttr ? cleanToken(tokenAttr.value) : null;
-      if (pariLines.length || (tok && tokens.has(tok))) tagOrder(o, pariLines.length ? "Pari" : "Pari chat");
-      if (pariLines.length) {
-        viaPari.push({ name: o.name, at: o.createdAt, total,
-          items: pariLines.map((li) => li.title), pari_value: pariLines.reduce((s, li) => s + Number(li.originalTotalSet.shopMoney.amount), 0) });
-      } else if (tok && tokens.has(tok)) {
-        afterChat.push({ name: o.name, at: o.createdAt, total });
+// Matched orders are saved in pari.orders, so any date range is instant and nothing is missed.
+// Every hour (and when the dashboard opens, at most every 10 min) the last ~2 days of orders are scanned.
+let lastScan = 0, scanning = null, ordersTable = false;
+async function ensureOrdersTable() {
+  if (ordersTable) return;
+  await pool.query(`create table if not exists pari.orders (
+    name text primary key, order_id text, at timestamptz not null, total numeric not null default 0,
+    kind text not null, items jsonb, pari_value numeric not null default 0, sid text, matched_at timestamptz not null default now());
+    create index if not exists pari_orders_at on pari.orders (at);`);
+  ordersTable = true;
+}
+export async function checkOrders() { if (ready && SHOPIFY_TOKEN) await scanOrders(true); }
+async function scanOrders(force) {
+  if (!force && Date.now() - lastScan < 10 * 60 * 1000) return;
+  if (scanning) return scanning;
+  scanning = (async () => {
+    await ensureOrdersTable();
+    const { rows: [m] } = await pool.query(`select max(at) as at from pari.orders`);
+    // From the reset day on the first run, then the last 2 days (orders can be placed a while after a chat).
+    const start = Math.max(Date.parse(FROM_TS), Date.now() - 2 * 86400000);
+    const sinceDate = new Date(m && m.at ? start : Date.parse(FROM_TS)).toISOString();
+    const tok = new Map((await pool.query(
+      `select cart_token, sid from pari.sessions where cart_token is not null and messages > 0 and started_at >= $1::timestamptz - interval '2 days'`,
+      [sinceDate])).rows.map((r) => [r.cart_token, r.sid]));
+    let after = null;
+    for (let page = 0; page < 60; page++) {
+      const res = await fetch(`https://${SHOP}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`, {
+        method: "POST", headers: { "content-type": "application/json", "x-shopify-access-token": SHOPIFY_TOKEN },
+        body: JSON.stringify({
+          query: `query($q:String!,$after:String){ orders(first:100, after:$after, query:$q){
+            nodes{ id name tags createdAt totalPriceSet{shopMoney{amount}} customAttributes{key value}
+              lineItems(first:50){ nodes{ title customAttributes{key value} originalTotalSet{shopMoney{amount}} } } }
+            pageInfo{ hasNextPage endCursor } } }`,
+          variables: { q: `created_at:>='${sinceDate}'`, after },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.errors) throw new Error(`Shopify ${res.status}: ${JSON.stringify(data.errors || data).slice(0, 150)}`);
+      const conn = data.data.orders;
+      for (const o of conn.nodes) {
+        const pariLines = o.lineItems.nodes.filter((li) => li.customAttributes.some((a) => a.key === "_pari"));
+        const ta = o.customAttributes.find((a) => a.key === "shopifyCartToken");
+        const t = ta ? cleanToken(ta.value) : null;
+        const sid = t && tok.has(t) ? tok.get(t) : null;
+        if (!pariLines.length && !sid) continue;
+        const kind = pariLines.length ? "via_pari" : "after_chat";
+        tagOrder(o, kind === "via_pari" ? "Pari" : "Pari chat");
+        await pool.query(
+          `insert into pari.orders (name, order_id, at, total, kind, items, pari_value, sid) values ($1,$2,$3,$4,$5,$6,$7,$8)
+           on conflict (name) do update set total=excluded.total, kind=excluded.kind, items=excluded.items, pari_value=excluded.pari_value`,
+          [o.name, o.id.split("/").pop(), o.createdAt, Number(o.totalPriceSet.shopMoney.amount), kind,
+           JSON.stringify(pariLines.map((li) => li.title)), pariLines.reduce((s, li) => s + Number(li.originalTotalSet.shopMoney.amount), 0), sid]);
       }
+      if (!conn.pageInfo.hasNextPage) break;
+      after = conn.pageInfo.endCursor;
     }
-    if (!conn.pageInfo.hasNextPage) break;
-    after = conn.pageInfo.endCursor;
-  }
-  const data = {
-    scanned,
-    via_pari: viaPari.length,
-    via_pari_value: viaPari.reduce((s, o) => s + o.pari_value, 0),
-    after_chat: afterChat.length,
-    after_chat_value: afterChat.reduce((s, o) => s + o.total, 0),
-    orders: [...viaPari.map((o) => ({ ...o, kind: "via_pari" })), ...afterChat.map((o) => ({ ...o, kind: "after_chat" }))]
-      .sort((a, b) => b.at.localeCompare(a.at)).slice(0, 50),
+    lastScan = Date.now();
+  })().finally(() => { scanning = null; });
+  return scanning;
+}
+async function purchaseStats(days) {
+  await scanOrders(false);
+  const since = `greatest(now() - interval '${Math.max(1, Math.min(365, Number(days) || 7))} days', '${FROM_TS}'::timestamptz)`;
+  const rows = (await pool.query(`select order_id as id, name, at, total, kind, items, pari_value from pari.orders where at >= ${since} order by at desc limit 300`)).rows
+    .map((r) => ({ ...r, at: r.at.toISOString(), total: Number(r.total), pari_value: Number(r.pari_value) }));
+  const via = rows.filter((r) => r.kind === "via_pari"), aft = rows.filter((r) => r.kind === "after_chat");
+  return {
+    scanned: null, last_scan: lastScan ? new Date(lastScan).toISOString() : null,
+    via_pari: via.length, via_pari_value: via.reduce((s, o) => s + o.pari_value, 0),
+    after_chat: aft.length, after_chat_value: aft.reduce((s, o) => s + o.total, 0),
+    orders: rows,
   };
-  purchaseCache = { key, at: Date.now(), data };
-  return data;
 }

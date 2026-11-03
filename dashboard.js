@@ -117,7 +117,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:24px}
     <a class="ghostbtn" id="csv" href="#">Export CSV</a>
   </div>
   <nav class="tabs" id="tabs">
-    <button data-t="overview" class="on">Overview</button><button data-t="chats">Conversations</button>
+    <button data-t="overview" class="on">Overview</button><button data-t="orders">Orders</button><button data-t="chats">Conversations</button>
     <button data-t="learning">Self-learning</button><button data-t="insights">Customer insights</button><button data-t="email">Daily email</button>
   </nav>
 </div></div>
@@ -135,6 +135,13 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:24px}
     <div class="card"><div class="head"><div><h2>Sales from ${name}</h2><p class="sub">Orders matched to chats</p></div><span class="chip">Revenue</span></div><div id="purch"></div></div>
     <div class="card"><div class="head"><div><h2>Most added to cart</h2><p class="sub">Products shoppers added straight from the chat</p></div></div><div class="rows rose" id="added"></div></div>
   </div>
+</section>
+<!-- ORDERS -->
+<section class="panel" id="p-orders">
+  <div class="kpis" id="okpis"></div>
+  <div class="card"><div class="head"><div><h2>Orders from ${name}</h2><p class="sub">Orders placed by shoppers who chatted with ${name} in this period · tap an order to open it in Shopify</p></div>
+    <div class="filters" id="of" style="margin:0"><button data-f="all" class="on">All</button><button data-f="via_pari">Via chat card</button><button data-f="after_chat">After chat</button></div></div>
+    <div id="olist"></div></div>
 </section>
 <!-- CONVERSATIONS -->
 <section class="panel" id="p-chats">
@@ -242,7 +249,21 @@ function purchases(d){
   if(!d.ordersEnabled){el.innerHTML='<div class="note">Orders aren\\'t connected yet. Items added from '+esc(NAME)+'\\'s cards are already tagged, so once the Shopify token is added this fills in for past chats too.</div>';return;}
   var p=d.purchases||{}; if(p.error){el.innerHTML='<div class="note">Couldn\\'t read orders: '+esc(p.error)+'</div>';return;}
   el.innerHTML='<div class="kpis" style="grid-template-columns:1fr 1fr;margin:0 0 12px"><div class="kpi rose" style="box-shadow:none;background:var(--rose2)"><div class="l">Bought via '+esc(NAME)+'</div><div class="v">'+num(p.via_pari)+'</div><div class="s">'+inr(p.via_pari_value)+' of chat items</div></div><div class="kpi" style="box-shadow:none;background:var(--g3)"><div class="l">Bought after chatting</div><div class="v">'+num(p.after_chat)+'</div><div class="s">'+inr(p.after_chat_value)+' order value</div></div></div>'+
-    (p.orders&&p.orders.length?'<table><tr><th>Order</th><th>Type</th><th>Value</th></tr>'+p.orders.slice(0,8).map(function(o){return '<tr><td><b>'+esc(o.name)+'</b><div class="m" style="font-size:11px;color:var(--muted)">'+when(o.at)+'</div></td><td><span class="pill'+(o.kind==='via_pari'?' cart':'')+'">'+(o.kind==='via_pari'?'Via chat card':'After chat')+'</span></td><td>'+inr(o.kind==='via_pari'?o.pari_value:o.total)+'</td></tr>';}).join('')+'</table>':'<div class="empty">No matched orders in this period yet ('+num(p.scanned)+' orders checked).</div>');
+    (p.orders&&p.orders.length?'<table><tr><th>Order</th><th>Type</th><th>Value</th></tr>'+p.orders.slice(0,8).map(function(o){return '<tr><td><b>'+esc(o.name)+'</b><div class="m" style="font-size:11px;color:var(--muted)">'+when(o.at)+'</div></td><td><span class="pill'+(o.kind==='via_pari'?' cart':'')+'">'+(o.kind==='via_pari'?'Via chat card':'After chat')+'</span></td><td>'+inr(o.kind==='via_pari'?o.pari_value:o.total)+'</td></tr>';}).join('')+'</table>':'<div class="empty">No matched orders in this period yet (checked every hour).</div>');
+}
+var OF='all';
+function ordersTab(d){
+  var k=d.kpi||{}, p=d.purchases||{};
+  if(!d.ordersEnabled||p.error){$('okpis').innerHTML='';$('olist').innerHTML='<div class="note">'+(p.error?'Couldn\\'t read orders: '+esc(p.error):'Orders aren\\'t connected yet. Add SHOPIFY_ADMIN_TOKEN (read_orders + write_orders) in Render \u2192 Environment. Then every order from a '+esc(NAME)+' chat shows here, including past days, and gets a \u201CPari\u201D tag in Shopify.')+'</div>';return;}
+  var orders=p.orders||[], n=orders.length, rev=orders.reduce(function(s,o){return s+Number(o.total||0);},0), chats=+k.chats||0;
+  var t=[['rose','cart','Orders from chats',num(n),num(p.via_pari)+' via chat card \u00B7 '+num(p.after_chat)+' after chat'],
+    ['gold','rupee','Revenue',inr(rev),'total value of these orders'],
+    ['','chat','Chat \u2192 order',chats?(100*n/chats).toFixed(1)+'%':'\u2013','of '+num(chats)+' chats placed an order'],
+    ['','eye','Average order',n?inr(rev/n):'\u2013','per order from a chat']];
+  $('okpis').innerHTML=t.map(function(x){return '<div class="kpi '+x[0]+'"><div class="ic">'+IC[x[1]]+'</div><div class="l">'+x[2]+'</div><div class="v">'+x[3]+'</div><div class="s">'+x[4]+'</div></div>';}).join('');
+  var list=orders.filter(function(o){return OF==='all'||o.kind===OF;});
+  $('olist').innerHTML=list.length?'<table><tr><th>Order</th><th>Date</th><th>Type</th><th>Items from chat</th><th style="text-align:right">Value</th></tr>'+list.map(function(o){
+    return '<tr><td><a href="https://admin.shopify.com/store/parulgargbeauty/orders/'+esc(o.id||'')+'" target="_blank" rel="noopener"><b>'+esc(o.name)+'</b></a></td><td>'+when(o.at)+'</td><td><span class="pill'+(o.kind==='via_pari'?' cart':'')+'">'+(o.kind==='via_pari'?'Via chat card':'After chat')+'</span></td><td style="max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc((o.items||[]).join(', ')||'\u2013')+'</td><td style="text-align:right;font-weight:700">'+inr(o.total)+'</td></tr>';}).join('')+'</table>':'<div class="empty">No orders from chats in this period yet (checked every hour).</div>';
 }
 function firstQ(c){var m=c.messages||[];for(var i=0;i<m.length;i++)if(m[i].role==='user')return m[i].content;return '';}
 function renderList(){
@@ -263,7 +284,7 @@ function load(){
   fetch(api('data?days='+DAYS)).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});}).then(function(x){var d=x.d;
     if(!x.ok){document.querySelector('main').innerHTML='<div class="card note">'+esc(d.error||'Not allowed')+'</div>';return;}
     if(!d.tracking){document.querySelector('main').innerHTML='<div class="card note">Tracking is off: the backend has no DATABASE_URL yet.</div>';return;}
-    LAST=d; if(d.from)$('fromtxt').textContent='AI beauty advisor · counting from '+new Date(d.from+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); kpis(d.kpi,d.daily); chart(d.daily); funnel(d.kpi,d.ordersEnabled?d.purchases:null); purchases(d);
+    LAST=d; if(d.from)$('fromtxt').textContent='AI beauty advisor · counting from '+new Date(d.from+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); kpis(d.kpi,d.daily); chart(d.daily); funnel(d.kpi,d.ordersEnabled?d.purchases:null); purchases(d); ordersTab(d);
     rows($('added'),d.added,'title','times',function(i){return num(i.times)+' · '+inr(i.value);});
     rows($('rec'),d.recommended,'title','times'); rows($('pages'),d.pages,'page','chats');
     rows($('links'),(d.links||[]).map(function(l){return {label:l.label+(l.where_from?' · '+l.where_from:''),times:l.times};}),'label','times');
@@ -314,6 +335,7 @@ document.querySelectorAll('#tabs button').forEach(function(b){b.onclick=function
   document.querySelectorAll('.panel').forEach(function(p){p.classList.toggle('on',p.id==='p-'+b.dataset.t);});
   if(b.dataset.t==='overview'&&LAST)chart(LAST.daily);};});
 $('q').oninput=renderList;
+document.querySelectorAll('#of button').forEach(function(b){b.onclick=function(){document.querySelectorAll('#of button').forEach(function(x){x.classList.toggle('on',x===b);});OF=b.dataset.f;if(LAST)ordersTab(LAST);};});
 document.querySelectorAll('#cf button').forEach(function(b){b.onclick=function(){document.querySelectorAll('#cf button').forEach(function(x){x.classList.toggle('on',x===b);});CF=b.dataset.f;renderList();};});
 var rt;window.addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(function(){if(LAST)chart(LAST.daily);},150);});
 load(); loadLearning(); loadMail();
