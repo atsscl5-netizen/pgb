@@ -9,7 +9,7 @@
 
 import http from "node:http";
 import crypto from "node:crypto";
-import { initTracking, logChat, logEvent, dashboardData, questionsForSummary, exportCsv, trackingEnabled, checkOrders } from "./tracking.js";
+import { initTracking, logChat, logEvent, dashboardData, convosPage, questionsForSummary, exportCsv, trackingEnabled, checkOrders } from "./tracking.js";
 import { dashboardHtml } from "./dashboard.js";
 import { initLearning, lessonsText, learningData, setLesson, runLearning, maybeRunNightly } from "./learning.js";
 import { initReport, buildReport, sendReport, maybeSendDaily, emailSettings, emailStatus } from "./report.js";
@@ -453,7 +453,8 @@ const server = http.createServer(async (req, res) => {
     }, origin);
     // Save the question + answer for the dashboard (after replying, so it never slows the chat down).
     logChat({ sid: payload.sid, page: payload.page, cart: payload.cart, ua: req.headers["user-agent"],
-      userText: messages[messages.length - 1].content, reply, products, budget });
+      userText: messages[messages.length - 1].content, reply, products, budget,
+      suggestions: (out.suggestions || []).slice(0, 3).map((x) => String(x).slice(0, 40)) });
   } catch (e) {
     console.error("[chat] error:", e.message);
     send(res, 502, { error: "The advisor is busy right now. Please try again in a moment." }, origin);
@@ -479,6 +480,7 @@ async function handleDashboard(req, res, path) {
       return res.end(dashboardHtml(ASSISTANT_NAME));
     }
     if (req.method === "GET" && path === "/dashboard/data") return json(200, await dashboardData(days));
+    if (req.method === "GET" && path === "/dashboard/convos") return json(200, { convos: await convosPage(days, Number(new URL(req.url, "http://x").searchParams.get("offset")) || 0, 50) });
     if (req.method === "GET" && path === "/dashboard/export.csv") {
       res.writeHead(200, { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="pari-chats-${days}d.csv"` });
       return res.end(await exportCsv(days));

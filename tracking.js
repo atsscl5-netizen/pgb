@@ -44,6 +44,7 @@ export async function initTracking() {
       id bigserial primary key, sid text not null, at timestamptz not null default now(),
       type text not null, data jsonb
     );
+    alter table pari.messages add column if not exists suggestions jsonb;
     create index if not exists pari_messages_at on pari.messages (at);
     create index if not exists pari_messages_sid on pari.messages (sid);
     create index if not exists pari_events_at on pari.events (at);
@@ -73,15 +74,16 @@ async function touchSession(sid, { page, ua, cart } = {}) {
     [sid, page ? String(page).slice(0, 200) : null, deviceFrom(ua), cleanToken(cart)]);
 }
 
-export async function logChat({ sid, page, ua, cart, userText, reply, products, budget }) {
+export async function logChat({ sid, page, ua, cart, userText, reply, products, budget, suggestions }) {
   if (!ready) return;
   sid = cleanSid(sid); if (!sid) return;
   try {
     await touchSession(sid, { page, ua, cart });
     await pool.query(`insert into pari.messages (sid, role, content, budget) values ($1,'user',$2,$3)`,
       [sid, redact(userText), budget || null]);
-    await pool.query(`insert into pari.messages (sid, role, content, products) values ($1,'assistant',$2,$3)`,
-      [sid, String(reply || "").slice(0, 1000), JSON.stringify((products || []).map((p) => ({ handle: p.handle, title: p.title, price: p.price })))]);
+    await pool.query(`insert into pari.messages (sid, role, content, products, suggestions) values ($1,'assistant',$2,$3,$4)`,
+      [sid, String(reply || "").slice(0, 1000), JSON.stringify((products || []).map((p) => ({ handle: p.handle, title: p.title, price: p.price }))),
+       JSON.stringify(Array.isArray(suggestions) ? suggestions : [])]);
     await pool.query(`update pari.sessions set messages = messages + 1, last_at = now() where sid = $1`, [sid]);
   } catch (e) { console.error("[track] logChat:", e.message); }
 }
@@ -155,18 +157,26 @@ export async function dashboardData(days) {
     select coalesce(first_page,'?') as page, count(*) as chats from pari.sessions
     where messages>0 and started_at >= ${since} group by 1 order by 2 desc limit 8`);
 
-  const convos = await q(`
-    select s.sid, s.started_at, s.device, s.first_page, s.add_to_carts,
-      (select json_agg(json_build_object('role',m.role,'content',m.content,'products',m.products) order by m.id)
-         from pari.messages m where m.sid = s.sid) as messages
-    from pari.sessions s where s.messages > 0 and s.started_at >= ${since}
-    order by s.started_at desc limit 60`);
+  const convos = await convosPage(days, 0, 50);
+  const [{ n: convoTotal }] = await q(`select count(*)::int as n from pari.sessions where messages > 0 and started_at >= ${since}`);
 
   let purchases = null;
   if (SHOPIFY_TOKEN) {
     try { purchases = await purchaseStats(days); } catch (e) { purchases = { error: e.message.slice(0, 200) }; }
   }
-  return { tracking: true, days: Number(days) || 7, from: FROM_DAY, kpi, daily, recommended, added, pages, whatsapp, links, convos, purchases, ordersEnabled: Boolean(SHOPIFY_TOKEN) };
+  return { tracking: true, days: Number(days) || 7, from: FROM_DAY, kpi, daily, recommended, added, pages, whatsapp, links, convos, convoTotal, purchases, ordersEnabled: Boolean(SHOPIFY_TOKEN) };
+}
+
+// Conversations, 50 at a time, newest first (for "See more" on the dashboard).
+export async function convosPage(days, offset, limit) {
+  if (!ready) return [];
+  const since = `greatest(now() - interval '${Math.max(1, Math.min(365, Number(days) || 7))} days', '${FROM_TS}'::timestamptz)`;
+  return (await pool.query(`
+    select s.sid, s.started_at, s.device, s.first_page, s.add_to_carts,
+      (select json_agg(json_build_object('role',m.role,'content',m.content,'products',m.products,'suggestions',m.suggestions) order by m.id)
+         from pari.messages m where m.sid = s.sid) as messages
+    from pari.sessions s where s.messages > 0 and s.started_at >= ${since}
+    order by s.started_at desc offset $1 limit $2`, [Math.max(0, offset | 0), Math.min(100, limit | 0 || 50)])).rows;
 }
 
 export async function questionsForSummary(days) {

@@ -96,7 +96,7 @@ main{max-width:1200px;margin:-48px auto 0;padding:0 16px 60px}
 .citem{padding:11px 12px;border-radius:12px;cursor:pointer;margin-bottom:4px}.citem:hover{background:#f6f8f7}.citem.on{background:var(--g3)}
 .citem .q{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .citem .m{font-size:11.5px;color:var(--muted);display:flex;gap:6px;align-items:center;margin-top:3px;flex-wrap:wrap}
-.pill{font-size:10.5px;font-weight:700;border-radius:99px;padding:2px 8px;background:#f0f2f1;color:var(--muted)}.pill.cart{background:var(--rose);color:#fff}
+.pill{font-size:10.5px;font-weight:700;border-radius:99px;padding:2px 8px;background:#f0f2f1;color:var(--muted)}.pill.cart{background:var(--rose);color:#fff}.tg{font-size:10.5px;font-weight:700;border-radius:99px;padding:2px 8px;border:1px solid currentColor;opacity:.9}.tg.real{background:#0c544e;color:#fff;border-color:#0c544e}.more{width:100%;margin-top:8px;border:1px dashed var(--line);background:#fbfbfa;border-radius:12px;padding:10px;font-weight:700;color:var(--g)}.more:hover{background:var(--g3)}.filters button .c{opacity:.6;margin-left:4px}
 .thread{display:flex;flex-direction:column;gap:8px;max-height:640px;overflow:auto;padding:4px}
 .msg{font-size:13.5px;padding:10px 13px;border-radius:16px;max-width:82%}
 .msg.user{background:var(--g);color:#fff;margin-left:auto;border-bottom-right-radius:5px}
@@ -145,10 +145,10 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:24px}
 </section>
 <!-- CONVERSATIONS -->
 <section class="panel" id="p-chats">
-  <div class="card"><div class="head"><div><h2>Conversations</h2><p class="sub">Latest 60 in this period · phone numbers &amp; emails are hidden automatically</p></div></div>
+  <div class="card"><div class="head"><div><h2>Conversations</h2><p class="sub" id="csub">Phone numbers &amp; emails are hidden automatically · tags are added automatically from what shoppers wrote</p></div></div>
     <div class="chatwrap"><div><input class="search" id="q" placeholder="Search chats, e.g. sindoor, coupon, foundation">
-      <div class="filters" id="cf"><button data-f="all" class="on">All</button><button data-f="cart">Added to cart</button><button data-f="mobile">Mobile</button></div>
-      <div class="clist" id="clist"></div></div>
+      <div class="filters" id="cf"></div>
+      <div class="clist" id="clist"></div><button class="more" id="cmore" style="display:none">See more chats</button></div>
       <div><div class="tmeta" id="tmeta"></div><div class="thread" id="thread"><div class="empty">Pick a chat on the left.</div></div></div></div></div>
 </section>
 <!-- LEARNING -->
@@ -266,17 +266,46 @@ function ordersTab(d){
     return '<tr><td><a href="https://admin.shopify.com/store/parulgargbeauty/orders/'+esc(o.id||'')+'" target="_blank" rel="noopener"><b>'+esc(o.name)+'</b></a></td><td>'+when(o.at)+'</td><td><span class="pill'+(o.kind==='via_pari'?' cart':'')+'">'+(o.kind==='via_pari'?'Via chat card':'After chat')+'</span></td><td style="max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc((o.items||[]).join(', ')||'\u2013')+'</td><td style="text-align:right;font-weight:700">'+inr(o.total)+'</td></tr>';}).join('')+'</table>':'<div class="empty">No orders from chats in this period yet (checked every hour).</div>';
 }
 function firstQ(c){var m=c.messages||[];for(var i=0;i<m.length;i++)if(m[i].role==='user')return m[i].content;return '';}
+var BTNS=['diwali gifts under ₹999','bridal / festive look','offers & coupons','60% off','50% off','buy 3 @ ₹999','bestsellers','find my lip shade','long-lasting kajal'];
+var TOPICS=[['offers','Offers & coupons','#9c7a2c',['coupon','copen','coupan','offer','discount','code','first100','sale','% off','deal','buy 3','3 for']],
+ ['order','Order & delivery','#c2557a',['my order','order id','order kiya','ordered','deliver','dilivery','track','dispatch','kab tak','kab milega','kabtak','kb tk','parcel','cancel','return','refund','shipping','cash on',' cod','cod ']],
+ ['shade','Shade help','#0c544e',['shade','skin','tone','dusky','fair','wheatish','undertone','complexion','colour','color']],
+ ['gift','Gifts & festive','#13756c',['gift','diwali','bridal','festive','shaadi','wedding','karva','shringar']],
+ ['sindoor','Sindoor & bindi','#c2557a',['sindoor','sindur','sindhor','sindoir','kumkum','kum kum','bindi']],
+ ['info','Product info','#59636e',['how to','how do i','apply','use kare','kaise','waterproof','water proof','long lasting','smudge','vegan','cruelty',' ml','gram','size','ingredient','heavy','organic','sensitive']],
+ ['notsold','Not sold by us','#59636e',['foundation','concealer','serum','moistur','cc cream','face cream','sunscreen']],
+ ['complaint','Complaint','#b42318',['cheap quality','cheeep','bad quality','poor quality','damaged','broken','wrong product','not working','fake','bekoof','worst','missing','not received','nahi mila']]];
+function isTap(t,prev){t=String(t||'').trim().toLowerCase();if(!t)return true;
+  if(BTNS.indexOf(t)>-1)return true;
+  if(prev&&prev.some(function(s){return String(s).trim().toLowerCase()===t;}))return true;
+  if(t.indexOf('show ')===0||t.indexOf('under ₹')===0)return true;
+  if(t.length<34&&t.indexOf(' under ₹')>-1)return true;
+  return false;}
+function classify(c){if(c._t)return c._t;var m=c.messages||[],prev=null,typed=0,txt='';
+  m.forEach(function(x){if(x.role==='assistant'){prev=x.suggestions||null;return;}if(!isTap(x.content,prev)){typed++;txt+=' '+String(x.content).toLowerCase()+' ';}prev=null;});
+  var tags=TOPICS.filter(function(tp){return tp[3].some(function(w){return txt.indexOf(w)>-1;});}).map(function(tp){return tp[0];});
+  c._t={real:typed>0,typed:typed,tags:tags};return c._t;}
+function tagHtml(id){var tp=TOPICS.filter(function(x){return x[0]===id;})[0];return tp?'<span class="tg" style="color:'+tp[2]+'">'+tp[1]+'</span>':'';}
+function passes(c,f){var t=classify(c);if(f==='all')return true;if(f==='real')return t.real;if(f==='buttons')return !t.real;if(f==='cart')return c.add_to_carts>0;if(f==='mobile')return c.device==='mobile';return t.tags.indexOf(f)>-1;}
+function renderFilters(){var opts=[['all','All'],['real','Real question'],['buttons','Buttons only'],['cart','Added to cart']].concat(TOPICS.map(function(x){return [x[0],x[1]];}));
+  $('cf').innerHTML=opts.map(function(o){var n=CONVOS.filter(function(c){return passes(c,o[0]);}).length;return '<button data-f="'+o[0]+'"'+(CF===o[0]?' class="on"':'')+'>'+o[1]+'<span class="c">'+n+'</span></button>';}).join('');
+  $('cf').querySelectorAll('button').forEach(function(b){b.onclick=function(){CF=b.dataset.f;renderFilters();renderList();};});}
+var CTOTAL=0, CLOADING=false;
 function renderList(){
   var q=$('q').value.trim().toLowerCase();
-  var list=CONVOS.filter(function(c){if(CF==='cart'&&!c.add_to_carts)return false;if(CF==='mobile'&&c.device!=='mobile')return false;
+  var list=CONVOS.filter(function(c){if(!passes(c,CF))return false;
     if(!q)return true;return (c.messages||[]).some(function(m){return String(m.content).toLowerCase().indexOf(q)>-1;});});
-  $('clist').innerHTML=list.length?list.map(function(c){return '<div class="citem'+(SEL===c.sid?' on':'')+'" data-s="'+esc(c.sid)+'"><div class="q">'+esc(firstQ(c)||'(no question)')+'</div><div class="m">'+when(c.started_at)+' · '+esc(c.device)+' · '+(c.messages||[]).filter(function(m){return m.role==='user';}).length+' msgs'+(c.add_to_carts?' <span class="pill cart">'+c.add_to_carts+' added</span>':'')+'</div></div>';}).join(''):'<div class="empty">No chats match.</div>';
+  $('clist').innerHTML=list.length?list.map(function(c){var t=classify(c);return '<div class="citem'+(SEL===c.sid?' on':'')+'" data-s="'+esc(c.sid)+'"><div class="q">'+esc(firstQ(c)||'(no question)')+'</div><div class="m">'+when(c.started_at)+' · '+esc(c.device)+' · '+(c.messages||[]).filter(function(m){return m.role==='user';}).length+' msgs'+(c.add_to_carts?' <span class="pill cart">'+c.add_to_carts+' added</span>':'')+'</div><div class="m">'+(t.real?'<span class="tg real">Real question</span>':'<span class="tg" style="color:#9aa3a1">Buttons only</span>')+t.tags.slice(0,3).map(tagHtml).join('')+'</div></div>';}).join(''):'<div class="empty">No chats match.</div>';
   $('clist').querySelectorAll('.citem').forEach(function(el){el.onclick=function(){SEL=el.dataset.s;renderList();showThread();};});
+  var left=CTOTAL-CONVOS.length; $('cmore').style.display=left>0?'':'none'; $('cmore').textContent=CLOADING?'Loading…':'See more chats ('+num(CONVOS.length)+' of '+num(CTOTAL)+' loaded)';
+  $('csub').textContent=num(CTOTAL)+' chats in this period · phone numbers & emails hidden · tags are added automatically from what shoppers wrote';
 }
+function moreConvos(){if(CLOADING)return;CLOADING=true;renderList();
+  fetch(api('convos?days='+DAYS+'&offset='+CONVOS.length)).then(function(r){return r.json();}).then(function(d){CONVOS=CONVOS.concat(d.convos||[]);CLOADING=false;renderFilters();renderList();}).catch(function(){CLOADING=false;renderList();});}
 function showThread(){
   var c=CONVOS.filter(function(x){return x.sid===SEL;})[0]; if(!c)return;
   $('tmeta').textContent='Started '+when(c.started_at)+' on '+(c.first_page||'?')+' · '+c.device;
-  $('thread').innerHTML=(c.messages||[]).map(function(m){return '<div class="msg '+m.role+'">'+esc(m.content)+(m.products&&m.products.length?'<div class="p">'+m.products.map(function(p){return '<span>'+esc(p.title.length>48?p.title.slice(0,46)+'…':p.title)+(p.price?' · '+inr(p.price):'')+'</span>';}).join('')+'</div>':'')+'</div>';}).join('');
+  var pv=null;$('thread').innerHTML=(c.messages||[]).map(function(m){var tap=m.role==='user'&&isTap(m.content,pv);pv=m.role==='assistant'?(m.suggestions||null):null;return '<div class="msg '+m.role+'"'+(tap?' title="Tapped a button" style="opacity:.75"':'')+'>'+(tap?'\u{1F446} ':'')+esc(m.content)+(m.products&&m.products.length?'<div class="p">'+m.products.map(function(p){return '<span>'+esc(p.title.length>48?p.title.slice(0,46)+'…':p.title)+(p.price?' · '+inr(p.price):'')+'</span>';}).join('')+'</div>':'')+'</div>';}).join('');
 }
 var LAST=null;
 function load(){
@@ -289,7 +318,7 @@ function load(){
     rows($('rec'),d.recommended,'title','times'); rows($('pages'),d.pages,'page','chats');
     rows($('links'),(d.links||[]).map(function(l){return {label:l.label+(l.where_from?' · '+l.where_from:''),times:l.times};}),'label','times');
     $('wa').innerHTML=(d.whatsapp&&d.whatsapp.length)?d.whatsapp.map(function(w){return '<div class="li">'+esc(w.q||'(no text)')+'<div class="m">'+when(w.at)+'</div></div>';}).join(''):'<div class="empty">None yet.</div>';
-    CONVOS=d.convos||[]; if(!SEL&&CONVOS[0])SEL=CONVOS[0].sid; renderList(); showThread();
+    CONVOS=d.convos||[]; CTOTAL=d.convoTotal||CONVOS.length; if(!SEL&&CONVOS[0])SEL=CONVOS[0].sid; renderFilters(); renderList(); showThread();
     $('summary').className='summary empty'; $('summary').textContent='Tap the button to create a summary.';
   }).catch(function(e){console.log(e);});
 }
@@ -336,7 +365,7 @@ document.querySelectorAll('#tabs button').forEach(function(b){b.onclick=function
   if(b.dataset.t==='overview'&&LAST)chart(LAST.daily);};});
 $('q').oninput=renderList;
 document.querySelectorAll('#of button').forEach(function(b){b.onclick=function(){document.querySelectorAll('#of button').forEach(function(x){x.classList.toggle('on',x===b);});OF=b.dataset.f;if(LAST)ordersTab(LAST);};});
-document.querySelectorAll('#cf button').forEach(function(b){b.onclick=function(){document.querySelectorAll('#cf button').forEach(function(x){x.classList.toggle('on',x===b);});CF=b.dataset.f;renderList();};});
+$('cmore').onclick=moreConvos;
 var rt;window.addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(function(){if(LAST)chart(LAST.daily);},150);});
 load(); loadLearning(); loadMail();
 </script></body></html>`;
