@@ -6,7 +6,7 @@
   var history = []; // [{role, content}] sent to the backend
   var busy = false;
   var STORE_KEY = "pgbAdvisorChat";
-  var STARTERS = ["Diwali gifts under ₹999", "Bridal / festive look"];
+  var STARTERS = ["Shaadi packs under ₹999", "Bridal / wedding look"];
   // Shortcut buttons under the header. Edited in the theme editor (PGB Beauty Advisor > Shortcut buttons).
   // "deals:60" = in-stock products 60%+ off; "deals:50-59" = 50–59% off (picked live from prices by the backend).
   var DEFAULT_LINKS = "60% OFF | deals:60\n50% OFF | deals:50-59\nBuy 3 @ ₹999 | /collections/sale\nOffers & coupons | ask\nBestsellers | /collections/bestsellers";
@@ -109,7 +109,7 @@
     head.appendChild(title);
     head.appendChild(close);
 
-    // ---- Promo bar (e.g. Diwali Gift Packs) + shortcut buttons, always visible under the header ----
+    // ---- Promo bar (e.g. Shaadi Packs) + shortcut buttons, always visible under the header ----
     var promo = null, promoHref = safeHref(PROMO_URL);
     if (PROMO_TEXT && promoHref) {
       promo = linkPill(PROMO_TEXT, promoHref, "promo_bar", "pgba-promo");
@@ -419,8 +419,8 @@
       NAME = opts.name || NAME;
       launcher = opts.launcher;
       // Promo bar: shown only when the theme passes text (an empty value = turned off in the theme editor).
-      // Older snippet without the setting → Diwali default.
-      if (opts.promoText === undefined) { PROMO_TEXT = "🪔 Diwali Gift Packs — Shop now"; PROMO_URL = "/collections/festive-gift-packs"; }
+      // Older snippet without the setting → Shaadi default.
+      if (opts.promoText === undefined) { PROMO_TEXT = "💍 Shaadi Packs — Up to 50% OFF"; PROMO_URL = "/collections/gift-packs"; }
       else { PROMO_TEXT = opts.promoText || ""; PROMO_URL = opts.promoUrl || ""; }
       LINKS = opts.links && opts.links.trim() ? opts.links : DEFAULT_LINKS;
       build();
