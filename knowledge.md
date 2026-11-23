@@ -1,22 +1,25 @@
 # PARI STORE KNOWLEDGE — parulgargbeauty.com
 # Edit this file on GitHub whenever offers or policies change (Render redeploys automatically, ~1 min).
-# Pari only states offers/codes/rules written here. Last checked against Shopify: 27 Oct 2026.
+# Pari only states offers/codes/rules written here. Last checked against Shopify: 23 Nov 2026.
 
 ## CURRENT OFFERS — ALL APPLY AUTOMATICALLY IN THE CART (no code to type)
 - FREE SHIPPING on orders of ₹399 and above (India). Below ₹399 a small shipping charge applies, shown at checkout.
 - FREE GIFT on orders of ₹999 and above (the "Free Festive Beauty Surprise" — currently a free lippie). Added automatically in the cart.
-- EXTRA 5% OFF on orders of ₹1,499 and above.
-- EXTRA 10% OFF on orders of ₹2,499 and above.
-- EXTRA 15% OFF on orders of ₹4,999 and above.
+- EXTRA ₹200 OFF on orders of ₹1,499 and above.
+- EXTRA ₹500 OFF on orders of ₹2,499 and above.
+- EXTRA ₹700 OFF on orders of ₹4,999 and above.
+- If asked which extra discounts combine (e.g. ₹200 + ₹500, or with Buy 3 @ ₹999 or a code): say the final best price is shown in the cart and at checkout; never add them up yourself.
 - BUY ANY 3 @ ₹999 — mix & match any 3 products from the Buy 3 @ 999 store: /collections/sale (discount applies in the cart).
-- DIWALI GIFTING — ready Diwali gift packs: /collections/festive-gift-packs (also Diwali Dhamaka 3 for ₹999: /collections/diwali-dhamaka-3-for-999)
+- SHAADI (WEDDING) SEASON — Shaadi packs up to 50% off: /collections/gift-packs ; Shaadi Season Specials: /collections/shaadi-season-specials ; bridal favourites: /collections/bridal-beauty-mua-s-favorites
+- NEW LAUNCH — Max Gloss Illuminator Liquid Highlighter (₹799): /products/max-gloss-illuminator-liquid-highlighter
+- Diwali is over. Festive gift packs are still available at /collections/festive-gift-packs while stock lasts.
 - DEALS — products at 50% off or more are shown in the chat's "50% OFF" / "60% OFF" tabs; for these say the reduced price is already shown on the product.
 - Karva Chauth is over. If asked, its packs are still in /collections/karva-chauth-specials while stock lasts.
-- FESTIVE PACKS — up to 50% off: /collections/festive-gift-packs
+- GIFT & SHAADI PACKS — up to 50% off: /collections/gift-packs
 
 ## SINDOOR — when a shopper asks about sindoor, show ALL the options (cards) and explain the saving
 - Signature Sindoor Pack: Liquid & Powder (KumKum) — ₹395. Both liquid sindoor and powder sindoor in one pack.
-- "₹100 SINDOOR" DIWALI OFFER (from Parul's ad) = Festive-Ready Bestseller Duo: 10-in-1 Lipstick Set (₹990) + Signature Sindoor Pack for just ₹100 more → ₹1,090 total instead of ₹1,385 (you save ₹295). Sindoor alone is not ₹100 — it's ₹100 extra with the 10-in-1 set.
+- "₹100 SINDOOR" OFFER (from Parul's ad) = Festive-Ready Bestseller Duo: 10-in-1 Lipstick Set (₹990) + Signature Sindoor Pack for just ₹100 more → ₹1,090 total instead of ₹1,385 (you save ₹295). Sindoor alone is not ₹100 — it's ₹100 extra with the 10-in-1 set.
 - Packs that include sindoor: Bold Festive Glam Trio ₹990, Soft Festive Glam Trio ₹990, Festive Beauty Shringar Pack ₹990, Shaadi Ready Beauty Edit – Deep & Bold ₹999, The Shringaar Celebration Pack ₹1,490, The Timeless Traditions Gift Pack ₹1,490, Signature Shringar Glam Pack ₹1,499.
 - GHEE / BALM: we DO have it. Signature Kum Kum Bindi Pack ₹799 = Red & Maroon Kumkum powders (10 g each) + Natural Kumkum Balm (5 g) made with Ghee, Coconut Oil & Beeswax + handcrafted 100% brass dual-tip applicator. The balm holds the kumkum in place. When a shopper says "sindoor with ghee", "ghee sindoor", "balm sindoor", "kumkum balm" or "natural/traditional kumkum", show this pack FIRST and say yes, we have it, with the ghee balm. Never say we don't have ghee or balm.
 - The Signature Sindoor Pack (₹395, liquid + powder) has no ghee/balm; vegan, smudge-proof formula.
@@ -24,7 +27,7 @@
 ## COUPON CODES
 - FIRST100 is the ONLY code a customer types. Every other offer above is automatic — tell shoppers they don't need a code for those.
 - FIRST100 — ₹100 off your FIRST order of ₹999 or more. For new customers only, one use per customer. Enter it at checkout.
-- Do NOT share or invent any other code (no WELCOME codes, no popup codes). Birthday coupons are personal and sent individually — never give them out.
+- Do NOT share or invent any other code (no WELCOME / popup codes). Birthday coupons are personal and sent individually — never give them out.
 - If asked whether a code works together with the automatic offers: say the final best price is shown at checkout; don't promise stacking.
 
 ## SHIPPING & DELIVERY
@@ -54,7 +57,7 @@
 ## COLLECTION LINKS (use these exact paths in "links")
 - New launches: /collections/new-launch
 - Bestsellers: /collections/bestsellers
-- Buy 3 @ 999: /collections/sale
+- Buy 3 @ 999 (Festive 999 Store): /collections/sale
 - Lips — All lips: /collections/lips
 - Lipsticks: /collections/lipstick
 - Liquid lipsticks: /collections/liquid-lipsticks
@@ -89,7 +92,8 @@
 - Traditional — Sindoor: /collections/sindoor
 - Traditional — Bindi collection: /collections/bindi-collection
 - Karva Chauth special packs: /collections/karva-chauth-specials
-- Diwali Dhamaka 3 for ₹999: /collections/diwali-dhamaka-3-for-999
+- Shaadi Season Specials: /collections/shaadi-season-specials
+- Bridal favourites (MUA's picks): /collections/bridal-beauty-mua-s-favorites
 - Festive Beauty Edit: /collections/festive-beauty-edit
 - Festive gift packs: /collections/festive-gift-packs
 - All gifts & packs: /collections/gift-packs

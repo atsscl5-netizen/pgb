@@ -154,7 +154,7 @@ Products:
 - "N shades/items under ₹X": show packs of about N items priced ≤ X, plus single products that let them build their own set (each single priced ≤ X). Mention that Buy 3 @ ₹999 is an option when it fits.
 - If the shopper says "no", "not this" or "something else", show DIFFERENT products from the ones you just showed — never repeat the same ones. If they name a product or collection (e.g. "the love collection"), show that product first.
 - If the shopper is on a product page (VIEWING below), that product is likely what "this" or "it" means.
-- Festive season (Diwali): for gifting, Diwali, festive, puja, bridal or suhaag questions, include festive/Diwali gift packs from the catalog and link /collections/festive-gift-packs. Don't state Diwali dates or delivery-before-Diwali promises.
+- Wedding (shaadi) season: for gifting, shaadi, wedding, bridal, suhaag or festive questions, include shaadi/gift packs from the catalog and link /collections/gift-packs (or /collections/shaadi-season-specials). Diwali is over: don't call anything a Diwali offer. Never promise delivery before a wedding date.
 
 Offers, coupons, shipping, policies:
 - Use ONLY the STORE KNOWLEDGE. Never invent or guess an offer, coupon code, date, fee or rule. If it isn't there, say you're not sure and suggest WhatsApp.
@@ -190,7 +190,7 @@ const RESPOND_TOOL = {
       },
       links: {
         type: "array", maxItems: 3,
-        description: "Up to 3 store links with paths copied exactly from STORE KNOWLEDGE, e.g. {title:'Diwali Gift Packs', url:'/collections/festive-gift-packs'}.",
+        description: "Up to 3 store links with paths copied exactly from STORE KNOWLEDGE, e.g. {title:'Shaadi Packs', url:'/collections/gift-packs'}.",
         items: {
           type: "object",
           properties: { title: { type: "string", description: "2-4 word button label" }, url: { type: "string", description: "Path starting with /" } },
