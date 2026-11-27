@@ -19,6 +19,7 @@ import { readFileSync } from "node:fs";
 const PORT = Number(process.env.PORT || 3000);
 const API_KEY = process.env.ANTHROPIC_API_KEY || "";
 const MODEL = process.env.MODEL || "claude-haiku-5-5";
+const TRACK_URL = "https://parulgargbeauty.clickpost.ai/en";
 const STORE_URL = (process.env.STORE_URL || "https://parulgargbeauty.com").replace(/\/$/, "");
 const FEED_VIEW = process.env.FEED_VIEW || "advisor-feed";
 // While testing on an unpublished theme, set this to its numeric ID (e.g. 188602941660) so the feed is read from that theme.
@@ -305,6 +306,11 @@ function cleanLinks(links) {
   const out = [];
   for (const l of Array.isArray(links) ? links : []) {
     if (!l || typeof l.url !== "string") continue;
+    if (/^https:\/\/parulgargbeauty\.clickpost\.ai(\/|$)/i.test(l.url.trim())) { // official order-tracking site
+      if (!out.some((o) => o.url === TRACK_URL)) out.push({ title: String(l.title || "Track your order").slice(0, 32), url: TRACK_URL });
+      if (out.length === 3) break;
+      continue;
+    }
     let path = l.url.trim().replace(/^https?:\/\/(www\.)?parulgargbeauty\.com/i, "").split(/[?#]/)[0].replace(/\/$/, "");
     const prod = path.match(/^\/products\/([\w-]+)$/);
     if (!(KNOWN_PATHS.has(path) || (prod && byHandle.has(prod[1])))) continue;
