@@ -6,7 +6,7 @@
   var history = []; // [{role, content}] sent to the backend
   var busy = false;
   var STORE_KEY = "pgbAdvisorChat";
-  var STARTERS = ["Shaadi packs under ₹999", "Bridal / wedding look"];
+  var STARTERS = ["Shaadi packs up to ₹999", "Bridal / wedding look"];
   // Shortcut buttons under the header. Edited in the theme editor (PGB Beauty Advisor > Shortcut buttons).
   // "deals:60" = in-stock products 60%+ off; "deals:50-59" = 50–59% off (picked live from prices by the backend).
   var DEFAULT_LINKS = "60% OFF | deals:60\n50% OFF | deals:50-59\nBuy 3 @ ₹999 | /collections/sale\nOffers & coupons | ask\nBestsellers | /collections/bestsellers";
@@ -69,6 +69,7 @@
   function safeHref(u) {
     u = String(u || "").trim();
     if (/^\/(?!\/)/.test(u)) return u;
+    if (/^https:\/\/parulgargbeauty\.clickpost\.ai(\/|$)/i.test(u)) return u; // official order-tracking site
     try { var a = new URL(u); if (a.hostname === location.hostname || /(^|\.)parulgargbeauty\.com$/.test(a.hostname)) return a.pathname + a.search; } catch (e) {}
     return "";
   }
@@ -76,6 +77,7 @@
   function linkPill(label, href, where, cls) {
     var a = el("a", cls || "pgba-link", label);
     a.href = href;
+    if (/^https?:/i.test(href)) { a.target = "_blank"; a.rel = "noopener"; } // outside site (order tracking): new tab
     a.addEventListener("click", function () { track("link_click", { label: label, url: href, where: where }); });
     return a;
   }
